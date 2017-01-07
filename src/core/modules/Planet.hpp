@@ -31,14 +31,9 @@
 #include <QString>
 
 // The callback type for the external position computation function
-<<<<<<< HEAD
 // arguments are JDE, position[3], velocity[3].
-// The last variable is the userData pointer.
-typedef void (*posFuncType)(double, double*, double*, void*);
-=======
 // The last variable is the userData pointer, which is NULL for Planets, but used in derived classes. E.g. points to the CometOrbit for Comets.
-typedef void (*posFuncType)(double, double*, void*);
->>>>>>> New rotational elements in use. Actual rotation (siderealTime) not properly working yet. A few other codefixes.
+typedef void (*posFuncType)(double, double*, double*, void*);
 
 // GZ2016: new axis functions for external computation of axis orientations for selected objects.
 // The last variable is a pointer to the Planet object.
@@ -104,15 +99,9 @@ public:
 	float ascendingNode;   // long. of ascending node of equator on the ecliptic [radians]
 	// Field rot_precession_rate in ssystem.ini is no longer used. We still keep Earth's value as it is evaluated in older versions (until 0.13.*).
 //	float precessionRate;  // rate of precession of rotation axis in [rads/JulianCentury(36525d)] [ NO LONGER USED WITH 0.14 (was used for Earth only, and that was too simple.) ]
-<<<<<<< HEAD
 	double siderealPeriod; // sidereal period (Planet year or a moon's sidereal month) [earth days]
-	// GZ for 0.15: I propose changes here: The 4 new entries after the switch are enough for many objects. Else, design special_functions.
-	bool useICRF;          // Use values w.r.t. ICRF (should ultimately be true for all objects!) This can be set when rot_pole_ra is given. Updating the axis is required if ra1<>0
-=======
-	double siderealPeriod; // sidereal period (Planet year in earth days) [earth days]
-	// GZ for 0.16: I propose changes here: The 6 new entries after the switch are enough for many objects. Else, design special_functions.
-	bool useICRF;          // Use values w.r.t. ICRF (should ultimately be true for all objects!) This can be set when rot_pole_w0 is given. Updating the axis is required if ra1<>0
->>>>>>> New rotational elements in use. Actual rotation (siderealTime) not properly working yet. A few other codefixes.
+	// GZ for 0.18: I propose changes here: The 6 new entries after the switch are enough for many objects. Else, design special_functions.
+	bool useICRF;          // Use values w.r.t. ICRF (should ultimately be true for all objects!) This can be set when rot_pole_ra1 or w0(?) is given. Updating the axis is required if ra1<>0
 	double ra0;            // [rad] RA_0 right ascension of north pole. ssystem.ini: rot_pole_ra    /180*M_PI
 	double ra1;            // [rad/century] rate of change in axis ra   ssystem.ini: rot_pole_ra1   /180*M_PI
 	double de0;            // [rad] DE_0 declination of north pole      ssystem.ini: rot_pole_de    /180*M_PI
@@ -178,24 +167,12 @@ public:
 
 	enum ApparentMagnitudeAlgorithm
 	{
-<<<<<<< HEAD
 		Mueller_1893,		// G. Mueller, based on visual observations 1877-91. [Expl.Suppl.1961]
 		Astr_Alm_1984,		// Astronomical Almanac 1984 and later. These give V (instrumental) magnitudes (allegedly from D.L. Harris, but this is wrong!)
 		Expl_Sup_1992,		// Algorithm provided by Pere Planesas (Observatorio Astronomico Nacional) (Was called "Planesas")
 		Expl_Sup_2013,		// Explanatory Supplement to the Astronomical Almanac, 3rd edition 2013
 		UndefinedAlgorithm,
 		Generic			// Visual magnitude based on phase angle and albedo. The formula source for this is totally unknown!
-=======
-		Mueller_1893,	// G. Mueller, based on visual observations 1877-91. [Expl.Suppl.1961]
-		Astr_Alm_1984,	// Astronomical Almanac 1984 and later. These give V (instrumental) magnitudes (allegedly from D.L. Harris, but this is wrong!)
-		Expl_Sup_1992,	// Algorithm provided by Pere Planesas (Observatorio Astronomico Nacional) (Was called "Planesas")
-		Expl_Sup_2013,	// Explanatory Supplement to the Astronomical Almanac, 3rd edition 2013
-//		Planesas,		// Algorithm provided by Pere Planesas (Observatorio Astronomico Nacional)
-//		Mueller,		// G. Mueller, based on visual observations 1877-91. [Expl.Suppl.1961]
-//		Harris,			// Astronomical Almanac 1984 and later. These give V (instrumental) magnitudes (D.L. Harris)
-		UndefinedAlgorithm,
-		Generic		// Visual magnitude based on phase angle and albedo. The formula source for this is totally unknown!
->>>>>>> New rotational elements in use. Actual rotation (siderealTime) not properly working yet. A few other codefixes.
 	};
 
 
@@ -324,7 +301,7 @@ public:
 	void setRotEquatorialToVsop87(const Mat4d &m);
 
 	const RotationElements &getRotationElements(void) const {return re;}
-// OLD HEAD VERSION
+// OLD HEAD VERSION. TODO: Check after Rebase!
 	// Set the orbital elements
 //	void setRotationElements(float _period, float _offset, double _epoch,
 //				 float _obliquity, float _ascendingNode,
@@ -366,23 +343,13 @@ public:
 	//! This requires both flavours of JD in cases involving Earth.
 	void computeTransMatrix(double JD, double JDE);
 
-<<<<<<< HEAD
-	//! Get the phase angle (rad) for an observer at pos obsPos in heliocentric coordinates (in AU)
-	double getPhaseAngle(const Vec3d& obsPos) const;
-	//! Get the elongation angle (rad) for an observer at pos obsPos in heliocentric coordinates (in AU)
-	double getElongation(const Vec3d& obsPos) const;
-	//! Get the angular size of the spheroid of the planet (i.e. without the rings)
-	double getSpheroidAngularSize(const StelCore* core) const;
-	//! Get the planet phase [0=dark..1=full] for an observer at pos obsPos in heliocentric coordinates (in AU)
-=======
 	//! Get the phase angle (radians) for an observer at pos obsPos in heliocentric coordinates (in AU)
 	double getPhaseAngle(const Vec3d& obsPos) const;
 	//! Get the elongation angle (radians) for an observer at pos obsPos in heliocentric coordinates (in AU)
 	double getElongation(const Vec3d& obsPos) const;
 	//! Get the angular radius (degrees) of the spheroid of the planet (i.e. without the rings)
 	double getSpheroidAngularSize(const StelCore* core) const;
-	//! Get the planet phase (illuminated fraction of the planet disk, 0..1) for an observer at pos obsPos in heliocentric coordinates (in AU)
->>>>>>> New rotational elements in use. Actual rotation (siderealTime) not properly working yet. A few other codefixes.
+	//! Get the planet phase (illuminated fraction of the planet disk, [0=dark..1=full]) for an observer at pos obsPos in heliocentric coordinates (in AU)
 	float getPhase(const Vec3d& obsPos) const;
 
 	//! Get the Planet position in the parent Planet ecliptic coordinate in AU
@@ -391,19 +358,6 @@ public:
 	//! Return the heliocentric ecliptical position
 	Vec3d getHeliocentricEclipticPos() const {return getHeliocentricPos(eclipticPos);}
 
-<<<<<<< HEAD
-	//! Return the heliocentric transformation for local coordinate
-	Vec3d getHeliocentricPos(Vec3d) const;
-	void setHeliocentricEclipticPos(const Vec3d &pos);
-
-	//! Get the planet velocity around the parent planet in ecliptical coordinates in AU/d
-	Vec3d getEclipticVelocity() const {return eclipticVelocity;}
-
-	//! Get the planet's heliocentric velocity in the solar system in ecliptical coordinates in AU/d. Required for aberration!
-	Vec3d getHeliocentricEclipticVelocity() const;
-
-	//! Compute the distance to the given position in heliocentric coordinates (in AU)
-=======
 	//! Return the heliocentric transformation for local (parentocentric) coordinate
 	//! @arg p planetocentric rectangular ecliptical coordinate (J2000)
 	//! @return heliocentric rectangular ecliptical coordinates (J2000)
@@ -412,8 +366,13 @@ public:
 	//! @arg pos heliocentric rectangular ecliptical coordinate (J2000)
 	void setHeliocentricEclipticPos(const Vec3d &pos);
 
-	//! Compute and return the distance to the given position in heliocentric ecliptical (J2000) coordinate (in AU)
->>>>>>> New rotational elements in use. Actual rotation (siderealTime) not properly working yet. A few other codefixes.
+	//! Get the planet velocity around the parent planet in ecliptical coordinates in AU/d
+	Vec3d getEclipticVelocity() const {return eclipticVelocity;}
+
+	//! Get the planet's heliocentric velocity in the solar system in ecliptical coordinates in AU/d. Required for aberration!
+	Vec3d getHeliocentricEclipticVelocity() const;
+
+	//! Compute and return the distance to the given position in heliocentric ecliptical (J2000) coordinates (in AU)
 	double computeDistance(const Vec3d& obsHelioPos);
 	//! Return the last computed distance to the given position in heliocentric ecliptical (J2000) coordinate (in AU)
 	double getDistance(void) const {return distance;}
