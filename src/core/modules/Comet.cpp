@@ -302,10 +302,6 @@ QVariantMap Comet::getInfoMap(const StelCore *core) const
 
 	return map;
 }
-void Comet::setSemiMajorAxis(const double value)
-{
-	semiMajorAxis = value;
-}
 
 double Comet::getSiderealPeriod() const
 {
