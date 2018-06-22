@@ -42,3 +42,5 @@ script:
   - make -j5
   - ctest --output-on-failure
 
+notifications:
+  email: false
