@@ -29,6 +29,7 @@
 #include "StelTranslator.hpp"
 #include "StelUtils.hpp"
 #include "StelFileMgr.hpp"
+#include "RefractionExtinction.hpp"
 
 #include <QRegExp>
 #include <QDebug>
@@ -42,6 +43,7 @@ MinorPlanet::MinorPlanet(const QString& englishName,
 			 //float outgas_intensity,
 			 //float outgas_falloff,
 			 const QString& atexMapName,
+			 const QString& anormalMapName,
 			 const QString& aobjModelName,
 			 posFuncType coordFunc,
 			 void* auserDataPtr,
@@ -58,7 +60,7 @@ MinorPlanet::MinorPlanet(const QString& englishName,
 		  //0.f, // outgas_intensity,
 		  //0.f, // outgas_falloff,
 		  atexMapName,
-		  "",
+		  anormalMapName,
 		  aobjModelName,
 		  coordFunc,
 		  auserDataPtr,
@@ -77,41 +79,6 @@ MinorPlanet::MinorPlanet(const QString& englishName,
 	specT(""),
 	specB("")
 {
-	//TODO: Fix the name
-	// - Detect numeric prefix and set number if any
-	// - detect provisional designation
-	// - create the HTML name
-	//Try to detect number
-	//TODO: Move this to the minor planet parse code in the plug-in?	
-	/*
-	QString name = englishName;
-	QRegExp bracketedNumberPrefixPattern("^\\((\\d+)\\)\\s");
-	QRegExp freeNumberPrefixPattern("^(\\d+)\\s[A-Za-z]{3,}");
-	if (bracketedNumberPrefixPattern.indexIn(name) == 0)
-	{
-		QString numberString = bracketedNumberPrefixPattern.cap(1);
-		bool ok = false;
-		number = numberString.toInt(&ok);
-		if (!ok)
-			number = 0;
-
-		//TODO: Handle a name consisting only of a number
-		name.remove(0, numberString.length() + 3);
-		htmlName = QString("(%1) ").arg(number);
-	}
-	else if (freeNumberPrefixPattern.indexIn(name) == 0)
-	{
-		QString numberString =freeNumberPrefixPattern.cap(1);
-		bool ok = false;
-		number = numberString.toInt(&ok);
-		if (!ok)
-			number = 0;
-
-		//TODO: Handle a name consisting only of a number
-		name.remove(0, numberString.length() + 3);
-		htmlName = QString("(%1) ").arg(number);
-	}*/
-
 	//Try to detect a naming conflict
 	if (englishName.endsWith('*'))
 		properName = englishName.left(englishName.count() - 1);
@@ -235,14 +202,7 @@ QString MinorPlanet::getInfoString(const StelCore *core, const InfoStringGroup &
 		oss << QString("%1: <b>%2</b>").arg(q_("Type"), q_(getPlanetTypeString())) << "<br />";
 	}
 
-	if (flags&Magnitude)
-	{
-		QString emag = "";
-		if (core->getSkyDrawer()->getFlagHasAtmosphere() && (alt_app>-3.0*M_PI/180.0)) // Don't show extincted magnitude much below horizon where model is meaningless.
-			emag = QString(" (%1: <b>%2</b>)").arg(q_("extincted to"), QString::number(getVMagnitudeWithExtinction(core), 'f', 2));
-
-		oss << QString("%1: <b>%2</b>%3").arg(q_("Magnitude"), QString::number(getVMagnitude(core), 'f', 2), emag) << "<br />";
-	}
+	oss << getMagnitudeInfoString(core, flags, alt_app, 1);
 
 	if (flags&AbsoluteMagnitude)
 	{
@@ -322,7 +282,7 @@ QString MinorPlanet::getInfoString(const StelCore *core, const InfoStringGroup &
 		}
 		if (qAbs(re.period)>0.f)
 		{
-			double eqRotVel = 2.0*M_PI*(AU*getRadius())/(getSiderealDay()*86400.0);
+			double eqRotVel = 2.0*M_PI*(AU*getEquatorialRadius())/(getSiderealDay()*86400.0);
 			oss << QString("%1: %2 %3").arg(q_("Equatorial rotation velocity")).arg(qAbs(eqRotVel), 0, 'f', 3).arg(kms) << "<br />";
 		}
 	}
@@ -361,7 +321,7 @@ QString MinorPlanet::getInfoString(const StelCore *core, const InfoStringGroup &
 	if (flags&Size)
 	{
 		// Many asteroides has irregular shape
-		oss << QString("%1: %2 %3").arg(q_("Diameter"), QString::number(AU * getRadius() * 2.0, 'f', 1) , qc_("km", "distance")) << "<br />";
+		oss << QString("%1: %2 %3").arg(q_("Diameter"), QString::number(AU * getEquatorialRadius() * 2.0, 'f', 1) , qc_("km", "distance")) << "<br />";
 	}
 
 	// If semi-major axis not zero then calculate and display orbital period for asteroid in days

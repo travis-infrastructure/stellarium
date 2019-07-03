@@ -1,20 +1,25 @@
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
 
 find_package(Threads REQUIRED)
 
-add_library(TelescopeControl_INDI
+SET(TelescopeControl_INDI_UIS
+    TelescopeClientINDIWidget.ui
+    INDIControlWidget.ui
+    )
+
+QT5_WRAP_UI(TelescopeControl_INDI_UIS_H ${TelescopeControl_INDI_UIS})
+
+add_library(TelescopeControl_INDI STATIC
     INDIConnection.hpp
     INDIConnection.cpp
     TelescopeClientINDI.hpp
     TelescopeClientINDI.cpp
     TelescopeClientINDIWidget.hpp
     TelescopeClientINDIWidget.cpp
-    TelescopeClientINDIWidget.ui
     INDIControlWidget.hpp
     INDIControlWidget.cpp
-    INDIControlWidget.ui
+    ${TelescopeControl_INDI_UIS_H}
     )
 
 target_link_libraries(TelescopeControl_INDI

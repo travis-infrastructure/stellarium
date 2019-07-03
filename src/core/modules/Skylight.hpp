@@ -20,8 +20,8 @@
 // Fast implementation of the algorithm from the article
 // "A Practical Analytic Model for Daylight" by A. J. Preetham, Peter Shirley and Brian Smits.
 
-#ifndef _SKYLIGHT_HPP_
-#define _SKYLIGHT_HPP_
+#ifndef SKYLIGHT_HPP
+#define SKYLIGHT_HPP
 
 #include "StelUtils.hpp"
 
@@ -169,7 +169,6 @@ inline void Skylight::computeZenithColor(void)
 	zenithColorY = ( 0.00275f*thetas3 - 0.00610f*thetas2 + 0.00317f*thetas) * T2 +
 	               (-0.04214f*thetas3 + 0.08970f*thetas2 - 0.04153f*thetas + 0.00516f) * T +
 	               ( 0.14535f*thetas3 - 0.26756f*thetas2 + 0.06670f*thetas + 0.26688f);
-
 }
 
 // Compute the luminance distribution coefficients
@@ -206,5 +205,5 @@ inline void Skylight::computeColorDistributionCoefs(void)
 }
 
 
-#endif // _SKYLIGHT_H_
+#endif // SKYLIGHT_HPP
 

@@ -21,8 +21,8 @@
 //! This is a private header for some StelDialog implementation classes, which require MOC'cing
 //! Other classes should not include this header.
 
-#ifndef _STELDIALOG_P_HPP_
-#define _STELDIALOG_P_HPP_
+#ifndef STELDIALOG_P_HPP
+#define STELDIALOG_P_HPP
 
 #include "StelPropertyMgr.hpp"
 #include <QAbstractButton>
@@ -61,6 +61,20 @@ private:
 	QComboBox* combo;
 };
 
+//! A StelPropertyProxy that works with QComboBox widgets.
+//! When the property changes, the widget's value is updated, while preventing widget signals to be sent.
+//! This avoids emitting the valueChanged() signal, which would unnecessarily set the property value again, which may lead to problems.
+class QComboBoxStelStringPropertyConnectionHelper : public StelPropertyProxy
+{
+	Q_OBJECT
+public:
+	QComboBoxStelStringPropertyConnectionHelper(StelProperty* prop,QComboBox* combo);
+
+protected slots:
+	virtual void onPropertyChanged(const QVariant& value) Q_DECL_OVERRIDE;
+private:
+	QComboBox* combo;
+};
 
 //! A StelPropertyProxy that works with QLineEdit widgets.
 //! When the property changes, the widget's value is updated, while preventing widget signals to be sent.
@@ -123,4 +137,4 @@ private:
 	double minValue, maxValue,dRange;
 };
 
-#endif // _STELDIALOG_P_HPP_
+#endif // STELDIALOG_P_HPP

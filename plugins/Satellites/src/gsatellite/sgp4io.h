@@ -1,5 +1,5 @@
-#ifndef _sgp4io_
-#define _sgp4io_
+#ifndef SGP4IO_H
+#define SGP4IO_H
 /*     ----------------------------------------------------------------
 *
 *                                 sgp4io.h;
@@ -25,22 +25,17 @@
 *                           original baseline
 *       ----------------------------------------------------------------      */
 
-#include <stdio.h>
-#include <math.h>
+#include <cstdio>
+#include <cmath>
 
 #include "sgp4ext.h"    // for several misc routines
 #include "sgp4unit.h"   // for sgp4init and getgravconst
 
 // ------------------------- function declarations -------------------------
 
-void twoline2rv
-     (
-      char      longstr1[130], char longstr2[130],
-      char      typerun,  char typeinput, char opsmode,
-      gravconsttype       whichconst,
-      double& startmfe, double& stopmfe, double& deltamin,
-      elsetrec& satrec
-     );
+void twoline2rv(char longstr1[130], char longstr2[130], char typerun, char typeinput, char opsmode,
+		gravconsttype whichconst, double& startmfe, double& stopmfe, double& deltamin,
+		elsetrec& satrec);
 
-#endif
+#endif // SGP4IO_H
 

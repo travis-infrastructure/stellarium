@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef METEORSHOWERS_HPP_
-#define METEORSHOWERS_HPP_
+#ifndef METEORSHOWERS_HPP
+#define METEORSHOWERS_HPP
 
 #include "MeteorShower.hpp"
 #include "MeteorShowersMgr.hpp"
@@ -77,7 +77,7 @@ public:
 	virtual StelObjectP searchByNameI18n(const QString& nameI18n) const;
 	virtual StelObjectP searchByName(const QString& name) const;
 	virtual StelObjectP searchByID(const QString &id) const;
-	virtual QStringList listMatchingObjects(const QString& objPrefix, int maxNbItem=5, bool useStartOfWords=false, bool inEnglish=true) const;
+	virtual QStringList listMatchingObjects(const QString& objPrefix, int maxNbItem=5, bool useStartOfWords=false, bool inEnglish=false) const;
 	virtual QStringList listAllObjects(bool inEnglish) const;
 	virtual QString getName() const { return "Meteor Showers"; }
 	virtual QString getStelObjectType() const { return MeteorShower::METEORSHOWER_TYPE; }
@@ -90,4 +90,4 @@ private:
 	void drawPointer(StelCore* core);
 };
 
-#endif /*METEORSHOWERS_HPP_*/
+#endif /*METEORSHOWERS_HPP*/

@@ -29,6 +29,7 @@ void StelJsonParser::write(const QVariant& v, QIODevice* output, int indentLevel
 
 QByteArray StelJsonParser::write(const QVariant& jsonObject, int indentLevel)
 {
+	Q_UNUSED(indentLevel)
 	QJsonDocument doc = QJsonDocument::fromVariant(jsonObject);
 	return doc.toJson();
 }
@@ -45,7 +46,7 @@ QVariant StelJsonParser::parse(const QByteArray& aar)
 	QJsonDocument doc = QJsonDocument::fromJson(aar, &error);
 	if (error.error != QJsonParseError::NoError)
 	{		
-		throw std::runtime_error(error.errorString().toLatin1().constData());
+		throw std::runtime_error(error.errorString().toLatin1().constData());		
 	}
 	return doc.toVariant();
 }

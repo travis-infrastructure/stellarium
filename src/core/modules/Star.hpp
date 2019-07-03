@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STAR_HPP_
-#define _STAR_HPP_
+#ifndef STAR_HPP
+#define STAR_HPP
 
 #include "ZoneData.hpp"
 #include "StelObjectType.hpp"
@@ -51,7 +51,6 @@ static inline float IndexToBV(unsigned char bV)
 
 
 struct Star1 { // 28 byte
-
 	/*
 	          _______________
 	0    hip |               |
@@ -144,7 +143,6 @@ public:
 static_assert(sizeof(Star1) == 28, "Size of Star1 must be 28 bytes");
 
 struct Star2 {  // 10 byte
-
 	/*
 	          _______________
 	0     x0 |               |
@@ -222,7 +220,6 @@ public:
 static_assert(sizeof(Star2) == 10, "Size of Star2 must be 10 bytes");
 
 struct Star3 {  // 6 byte
-
 	/*
 	          _______________
 	0     x0 |               |
@@ -280,4 +277,4 @@ public:
 };
 static_assert(sizeof(Star3) == 6, "Size of Star3 must be 6 bytes");
 
-#endif // _STAR_HPP_
+#endif // STAR_HPP

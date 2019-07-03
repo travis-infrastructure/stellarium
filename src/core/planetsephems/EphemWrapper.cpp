@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
 #include "vsop87.h"
 #include "elp82b.h"
 #include "marssat.h"
-#include "l1.h"
+#include "l12.h"
 #include "tass17.h"
 #include "gust86.h"
 #include "de431.hpp"
@@ -33,8 +33,8 @@ Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
 
 #define EPHEM_MERCURY_ID  0
 #define EPHEM_VENUS_ID    1
-#define EPHEM_EMB_ID    2
-#define EPHEM_MARS_ID   3
+#define EPHEM_EMB_ID      2
+#define EPHEM_MARS_ID     3
 #define EPHEM_JUPITER_ID  4
 #define EPHEM_SATURN_ID   5
 #define EPHEM_URANUS_ID   6
@@ -46,7 +46,7 @@ Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
 #define EPHEM_JPL_EARTH_ID 3
 #define EPHEM_JPL_PLUTO_ID 9
 #define EPHEM_JPL_MOON_ID 10
-#define EPHEM_JPL_SUN_ID 11
+#define EPHEM_JPL_SUN_ID  11
 
 /**   JPL PLANET ID LIST
 **            1 = mercury           8 = neptune                             **
@@ -117,7 +117,6 @@ void get_planet_helio_coordsv(const double jd, double xyz[3], double xyzdot[3], 
 	}
 	xyz[0]   =xyz6[0]; xyz[1]   =xyz6[1]; xyz[2]   =xyz6[2];
 	xyzdot[0]=xyz6[3]; xyzdot[1]=xyz6[4]; xyzdot[2]=xyz6[5];
-
 }
 
 // Osculating positions for time JDE in elements for JDE0, if possible by the theory used (e.g. VSOP87).
@@ -355,25 +354,25 @@ void get_deimos_parent_coordsv(double jd, double xyz[3], double xyzdot[3], void*
 void get_io_parent_coordsv(double jd, double xyz[3], double xyzdot[3], void* unused)
 {
 	Q_UNUSED(unused);
-	GetL1Coor(jd, L1_IO, xyz, xyzdot);
+	GetL12Coor(jd, L12_IO, xyz, xyzdot);
 }
 
 void get_europa_parent_coordsv(double jd, double xyz[3], double xyzdot[3], void* unused)
 {
 	Q_UNUSED(unused);
-	GetL1Coor(jd, L1_EUROPA, xyz, xyzdot);
+	GetL12Coor(jd, L12_EUROPA, xyz, xyzdot);
 }
 
 void get_ganymede_parent_coordsv(double jd, double xyz[3], double xyzdot[3], void* unused)
 {
 	Q_UNUSED(unused);
-	GetL1Coor(jd, L1_GANYMEDE, xyz, xyzdot);
+	GetL12Coor(jd, L12_GANYMEDE, xyz, xyzdot);
 }
 
 void get_callisto_parent_coordsv(double jd, double xyz[3], double xyzdot[3], void* unused)
 {
 	Q_UNUSED(unused);
-	GetL1Coor(jd, L1_CALLISTO, xyz, xyzdot);
+	GetL12Coor(jd, L12_CALLISTO, xyz, xyzdot);
 }
 
 void get_mimas_parent_coordsv(double jd, double xyz[3], double xyzdot[3], void* unused)

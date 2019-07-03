@@ -35,7 +35,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <stdexcept>
-#include <stdio.h>
+#include <cstdio>
 
 // #include <QNetworkDiskCache>
 
@@ -82,7 +82,7 @@ void JsonLoadThread::run()
 		buf.open(QIODevice::ReadOnly);
 		tile->temporaryResultMap = MultiLevelJsonBase::loadFromJSON(buf, qZcompressed, gzCompressed);
 	}
-	catch (std::runtime_error e)
+	catch (std::runtime_error& e)
 	{
 		qWarning() << "WARNING : Can't parse loaded JSON description: " << e.what();
 		tile->errorOccured = true;
@@ -109,7 +109,7 @@ void MultiLevelJsonBase::initFromUrl(const QString& url)
 {
 	const MultiLevelJsonBase* parent = qobject_cast<MultiLevelJsonBase*>(QObject::parent());
 	contructorUrl = url;
-	if (!url.startsWith("http://") && (parent==Q_NULLPTR || !parent->getBaseUrl().startsWith("http://")))
+	if (!url.startsWith("http", Qt::CaseInsensitive) && (parent==Q_NULLPTR || !parent->getBaseUrl().startsWith("http", Qt::CaseInsensitive)))
 	{
 		// Assume a local file
 		QString fileName = StelFileMgr::findFile(url);
@@ -140,7 +140,7 @@ void MultiLevelJsonBase::initFromUrl(const QString& url)
 			{
 				loadFromQVariantMap(loadFromJSON(f, compressed, gzCompressed));
 			}
-			catch (std::runtime_error e)
+			catch (std::runtime_error& e)
 			{
 				qWarning() << "WARNING : Can't parse JSON description: " << QDir::toNativeSeparators(fileName) << ": " << e.what();
 				errorOccured = true;
@@ -156,13 +156,13 @@ void MultiLevelJsonBase::initFromUrl(const QString& url)
 		// This is useful to reduce bandwidth when the user moves rapidely
 		deletionDelay = 0.001;
 		QUrl qurl;
-		if (url.startsWith("http://"))
+		if (url.startsWith("http", Qt::CaseInsensitive))
 		{
 			qurl.setUrl(url);
 		}
 		else
 		{
-			Q_ASSERT(parent->getBaseUrl().startsWith("http://"));
+			Q_ASSERT(parent->getBaseUrl().startsWith("http", Qt::CaseInsensitive));
 			qurl.setUrl(parent->getBaseUrl()+url);
 		}
 		Q_ASSERT(httpReply==Q_NULLPTR);
@@ -194,7 +194,7 @@ void MultiLevelJsonBase::initFromQVariantMap(const QVariantMap& map)
 	{
 		loadFromQVariantMap(map);
 	}
-	catch (std::runtime_error e)
+	catch (std::runtime_error& e)
 	{
 		qWarning() << "WARNING: invalid variant map: " << e.what();
 		errorOccured = true;
@@ -337,7 +337,7 @@ void MultiLevelJsonBase::jsonLoadFinished()
 	{
 		loadFromQVariantMap(temporaryResultMap);
 	}
-	catch (std::runtime_error e)
+	catch (std::runtime_error& e)
 	{
 		qWarning() << "WARNING: invalid variant map: " << e.what();
 		errorOccured = true;

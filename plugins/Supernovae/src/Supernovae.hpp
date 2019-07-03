@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _SUPERNOVAE_HPP_
-#define _SUPERNOVAE_HPP_
+#ifndef SUPERNOVAE_HPP
+#define SUPERNOVAE_HPP
 
 #include "StelObjectModule.hpp"
 #include "StelObject.hpp"
@@ -30,9 +30,9 @@
 #include <QList>
 #include <QSharedPointer>
 #include <QHash>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 
-class QNetworkAccessManager;
-class QNetworkReply;
 class QSettings;
 class QTimer;
 class SupernovaeDialog;
@@ -92,22 +92,24 @@ public:
 	virtual double getCallOrder(StelModuleActionName actionName) const;
 
 	///////////////////////////////////////////////////////////////////////////
-	// Methods defined in StelObjectManager class
+	// Methods defined in StelObjectModule class
 	//! Used to get a list of objects which are near to some position.
-	//! @param v a vector representing the position in th sky around which to search for nebulae.
-	//! @param limitFov the field of view around the position v in which to search for satellites.
+	//! @param v a vector representing the position in th sky around which to search for supernovae.
+	//! @param limitFov the field of view around the position v in which to search for supernovae.
 	//! @param core the StelCore to use for computations.
-	//! @return an list containing the satellites located inside the limitFov circle around position v.
+	//! @return a list containing the supernovae located inside the limitFov circle around position v.
 	virtual QList<StelObjectP> searchAround(const Vec3d& v, double limitFov, const StelCore* core) const;
 
-	//! Return the matching satellite object's pointer if exists or Q_NULLPTR.
-	//! @param nameI18n The case in-sensistive satellite name
+	//! Return the matching supernova object's pointer if exists or Q_NULLPTR.
+	//! @param nameI18n The case in-sensitive localized supernova name
 	virtual StelObjectP searchByNameI18n(const QString& nameI18n) const;
 
-	//! Return the matching satellite if exists or Q_NULLPTR.
-	//! @param name The case in-sensistive standard program name
+	//! Return the matching supernova if exists or Q_NULLPTR.
+	//! @param name The case in-sensitive english supernova name
 	virtual StelObjectP searchByName(const QString& name) const;
 
+	//! Return the matching supernova if exists, or an "empty" pointer.
+	//! @param id The supernova id
 	virtual StelObjectP searchByID(const QString &id) const
 	{
 		return qSharedPointerCast<StelObject>(getByID(id));
@@ -174,7 +176,7 @@ signals:
 	void jsonUpdateComplete(void);
 
 public slots:
-	// FIXME: Add functions for scripting support
+	// TODO: Add functions for scripting support
 
 	//! Download JSON from web recources described in the module section of the
 	//! module.ini file and update the local JSON file.
@@ -185,6 +187,8 @@ public slots:
 
 	void reloadCatalog(void);
 
+	//! Connect this to StelApp font size.
+	void setFontSize(int s){font.setPixelSize(s);}
 private:
 	// Font used for displaying our text
 	QFont font;
@@ -227,7 +231,8 @@ private:
 
 	// variables and functions for the updater
 	UpdateState updateState;
-	QNetworkAccessManager* downloadMgr;
+	QNetworkAccessManager * networkManager;
+	QNetworkReply * downloadReply;
 	QString updateUrl;	
 	class StelProgressController* progressBar;
 	QTimer* updateTimer;
@@ -235,6 +240,9 @@ private:
 	bool updatesEnabled;
 	QDateTime lastUpdate;
 	int updateFrequencyDays;
+
+	void startDownload(QString url);
+	void deleteDownloadProgressBar();
 
 	QSettings* conf;
 
@@ -246,11 +254,10 @@ private slots:
 	//! if the last update was longer than updateFrequencyHours ago then the update is
 	//! done.
 	void checkForUpdate(void);
-	void updateDownloadComplete(QNetworkReply* reply);
 
+	void updateDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
+	void downloadComplete(QNetworkReply * reply);
 };
-
-
 
 #include <QObject>
 #include "StelPluginInterface.hpp"
@@ -267,4 +274,4 @@ public:
 	virtual QObjectList getExtensionList() const { return QObjectList(); }
 };
 
-#endif /*_SUPERNOVAE_HPP_*/
+#endif /* SUPERNOVAE_HPP */

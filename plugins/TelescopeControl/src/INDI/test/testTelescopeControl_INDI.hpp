@@ -23,12 +23,11 @@
 
 #include "TelescopeClientINDI.hpp"
 
-class testTelescopeControl_INDI : public QObject
+class TestTelescopeControl_INDI : public QObject
 {
     Q_OBJECT
 
 private slots:
-
 };
 
 #endif // TESTTELESCOPECONTROL_INDI_HPP

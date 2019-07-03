@@ -15,8 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
-#ifndef OBSERVABILITY_HPP_
-#define OBSERVABILITY_HPP_
+#ifndef OBSERVABILITY_HPP
+#define OBSERVABILITY_HPP
 
 #include "StelModule.hpp"
 #include <QFont>
@@ -363,9 +363,6 @@ private:
 	//! Strings to save ephemeris Times:
 	QString RiseTime, SetTime, CulmTime;
 
-	//! Just the names of the months.
-	QStringList monthNames;
-
 	//! Using for storage date format [i18n]
 	bool dmyFormat;
 
@@ -405,9 +402,7 @@ private:
         QString msgHeliRise, msgHeliSet, msgNoHeliRise;
 	QString msgWholeYear, msgNotObs, msgAboveHoriz, msgToday, msgThisYear, msgPrevFullMoon, msgNextFullMoon;
 	//! @}
-
 };
-
 
 #include <QObject>
 #include "StelPluginInterface.hpp"
@@ -423,4 +418,4 @@ public:
        virtual QObjectList getExtensionList() const { return QObjectList(); }
 };
 
-#endif /*OBSERVABILITY_HPP_*/
+#endif /*OBSERVABILITY_HPP*/

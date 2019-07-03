@@ -252,13 +252,11 @@ void TelescopeConfigurationDialog::initExistingTelescopeConfiguration(int slot)
 		//TODO: Add debug
 		return;
 	}
-
 	ui->lineEditTelescopeName->setText(name);
 
 	if(connectionType == ConnectionInternal && !deviceModelName.isEmpty())
 	{
 		ui->radioButtonTelescopeLocal->setChecked(true);
-		
 		ui->lineEditHostName->setText("localhost");//TODO: Remove magic word!
 		
 		//Make the current device model selected in the list
@@ -270,9 +268,8 @@ void TelescopeConfigurationDialog::initExistingTelescopeConfiguration(int slot)
 			return;
 		}
 		else
-		{
 			ui->comboBoxDeviceModel->setCurrentIndex(index);
-		}
+
 		//Initialize the serial port value
 		ui->comboSerialPort->activated(serialPortName);
 		ui->comboSerialPort->setEditText(serialPortName);
@@ -302,9 +299,9 @@ void TelescopeConfigurationDialog::initExistingTelescopeConfiguration(int slot)
 	else if (connectionType == ConnectionINDI)
 	{
 		ui->radioButtonTelescopeINDI->setChecked(true);
-	ui->INDIProperties->setHost(host);
-	ui->INDIProperties->setPort(portTCP);
-	ui->INDIProperties->setSelectedDevice(deviceModelName);
+		ui->INDIProperties->setHost(host);
+		ui->INDIProperties->setPort(portTCP);
+		ui->INDIProperties->setSelectedDevice(deviceModelName);
 	}
 
 	//Equinox
@@ -413,7 +410,7 @@ void TelescopeConfigurationDialog::buttonSavePressed()
 
 	QString host = ui->lineEditHostName->text();
 
-	if(host.isEmpty() || !validateHost(host))
+	if(host.isEmpty()) // Remove validation of hostname
 		return;
 	
 	int delay = MICROSECONDS_FROM_SECONDS(ui->doubleSpinBoxTelescopeDelay->value());
@@ -491,19 +488,4 @@ void TelescopeConfigurationDialog::deviceModelSelected(const QString& deviceMode
 {
 	ui->labelDeviceModelDescription->setText(q_(telescopeManager->getDeviceModels().value(deviceModelName).description));
 	ui->doubleSpinBoxTelescopeDelay->setValue(SECONDS_FROM_MICROSECONDS(telescopeManager->getDeviceModels().value(deviceModelName).defaultDelay));
-}
-
-bool TelescopeConfigurationDialog::validateHost(QString hostName)
-{
-    // Simple validation by ping
-    int exitCode;
-#ifdef Q_OS_WIN
-    // WTF? It's not working anymore!
-    //exitCode = QProcess::execute("ping", QStringList() << "-n 1" << hostName);
-    exitCode = 0;
-#else
-    exitCode = QProcess::execute("ping", QStringList() << "-c1" << hostName);
-#endif
-    return (0 == exitCode);
-    //TODO: Add debug if host not alive?
 }

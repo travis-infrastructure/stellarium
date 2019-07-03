@@ -30,8 +30,8 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // gTimeSpan and gTime
-#ifndef _GTIME_HPP_
-#define _GTIME_HPP_ 1
+#ifndef GTIME_HPP
+#define GTIME_HPP
 
 #include <time.h>
 #include <iostream> // for operator<<(), see below
@@ -127,12 +127,7 @@ public:
 
 private:
 	double m_timeSpan; //time span in julian days
-
 };
-
-
-
-
 
 //! @class gTime
 //! This class implements time calculations.
@@ -143,7 +138,6 @@ private:
 class gTime
 {
 public:
-
 	// Constructors
 	gTime(double ai_jDays = 0);
 	gTime(int year, double day);
@@ -195,8 +189,6 @@ public:
 		m_time = t;
 		return *this;
 	}
-
-
 
 	//////////////////////////////////////
 	// Time Machine getting operations
@@ -304,7 +296,6 @@ public:
 
 private:
 	double m_time; //Time in Julian Days
-
 };
 
 
@@ -327,4 +318,4 @@ inline std::ostream& operator<<(std::ostream& s, gTimeSpan& ai_gTimeSpan)
 }
 
 
-#endif // _GTIME_HPP_
+#endif // GTIME_HPP

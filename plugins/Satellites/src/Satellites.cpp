@@ -70,7 +70,7 @@ StelPluginInfo SatellitesStelPluginInterface::getPluginInfo() const
 	info.id = "Satellites";
 	info.displayedName = N_("Satellites");
 	info.authors = "Matthew Gates, Jose Luis Canales";
-	info.contact = "http://stellarium.org/";
+	info.contact = "https://github.com/Stellarium/stellarium";
 	info.description = N_("Prediction of artificial satellite positions in Earth orbit based on NORAD TLE data");
 	info.version = SATELLITES_PLUGIN_VERSION;
 	info.license = SATELLITES_PLUGIN_LICENSE;
@@ -208,8 +208,10 @@ void Satellites::init()
 	// Handle changes to the observer location or wide range of dates:
 	StelCore* core = StelApp::getInstance().getCore();
 	connect(core, SIGNAL(locationChanged(StelLocation)), this, SLOT(updateObserverLocation(StelLocation)));
-	connect(core, SIGNAL(dateChangedForMonth()), this, SLOT(updateSatellitesVisibility()));
-	connect(core, SIGNAL(dateChangedByYear()), this, SLOT(updateSatellitesVisibility()));
+	
+	// let sat symbols stay on-screen even if highly unprecise over time 
+	//connect(core, SIGNAL(dateChangedForMonth()), this, SLOT(updateSatellitesVisibility()));
+	//connect(core, SIGNAL(dateChangedByYear()), this, SLOT(updateSatellitesVisibility()));
 }
 
 void Satellites::updateSatellitesVisibility()
@@ -591,7 +593,6 @@ void Satellites::restoreDefaultCatalog()
 		// manner
 		StelApp::getInstance().getSettings()->remove("Satellites/last_update");
 		lastUpdate = QDateTime::fromString("2015-05-01T12:00:00", Qt::ISODate);
-
 	}
 }
 
@@ -745,7 +746,17 @@ const QString Satellites::readCatalogVersion()
 	}
 
 	QVariantMap map;
-	map = StelJsonParser::parse(&satelliteJsonFile).toMap();
+	try
+	{
+		map = StelJsonParser::parse(&satelliteJsonFile).toMap();
+		satelliteJsonFile.close();
+	}
+	catch (std::runtime_error &e)
+	{
+		qDebug() << "[Satellites] File format is wrong! Error: " << e.what();
+		return jsonVersion;
+	}
+
 	if (map.contains("creator"))
 	{
 		QString creator = map.value("creator").toString();
@@ -756,7 +767,6 @@ const QString Satellites::readCatalogVersion()
 		}
 	}
 
-	satelliteJsonFile.close();
 	//qDebug() << "[Satellites] catalog version from file:" << jsonVersion;
 	return jsonVersion;
 }
@@ -796,8 +806,16 @@ QVariantMap Satellites::loadDataMap(QString path)
 		qWarning() << "[Satellites] cannot open " << QDir::toNativeSeparators(path);
 	else
 	{
-		map = StelJsonParser::parse(&jsonFile).toMap();
-		jsonFile.close();
+		try
+		{
+			map = StelJsonParser::parse(&jsonFile).toMap();
+			jsonFile.close();
+		}
+		catch (std::runtime_error &e)
+		{
+			qDebug() << "[Satellites] File format is wrong! Error: " << e.what();
+			return QVariantMap();
+		}
 	}
 	return map;
 }
@@ -811,7 +829,7 @@ void Satellites::setDataMap(const QVariantMap& map)
 	if (map.contains("hintColor"))
 	{
 		defaultHintColorMap = map.value("hintColor").toList();
-		defaultHintColor.set(defaultHintColorMap.at(0).toDouble(), defaultHintColorMap.at(1).toDouble(), defaultHintColorMap.at(2).toDouble());
+		defaultHintColor.set(defaultHintColorMap.at(0).toFloat(), defaultHintColorMap.at(1).toFloat(), defaultHintColorMap.at(2).toFloat());
 	}
 
 	if (satelliteListModel)
@@ -841,7 +859,7 @@ void Satellites::setDataMap(const QVariantMap& map)
 			numReadOk++;
 		}
 	}
-	qSort(satellites);
+	std::sort(satellites.begin(), satellites.end());
 	
 	if (satelliteListModel)
 		satelliteListModel->endSatellitesChange();
@@ -1011,7 +1029,7 @@ void Satellites::add(const TleDataList& newSatellites)
 		}
 	}
 	if (numAdded > 0)
-		qSort(satellites);
+		std::sort(satellites.begin(), satellites.end());
 	
 	if (satelliteListModel)
 		satelliteListModel->endSatellitesChange();
@@ -1194,10 +1212,11 @@ void Satellites::setUpdateFrequencyHours(int hours)
 
 void Satellites::checkForUpdate(void)
 {
-	if (updatesEnabled && updateState != Updating
-	    && lastUpdate.addSecs(updateFrequencyHours * 3600) <= QDateTime::currentDateTime()
-	    && downloadMgr->networkAccessible()==QNetworkAccessManager::Accessible)
+	if (updatesEnabled && (updateState != Updating)
+	    && (lastUpdate.addSecs(updateFrequencyHours * 3600) <= QDateTime::currentDateTime()))
+	{
 		updateFromOnlineSources();
+	}
 }
 
 void Satellites::updateFromOnlineSources()
@@ -1357,7 +1376,7 @@ void Satellites::saveDownloadedUpdate(QNetworkReply* reply)
 	if (progressBar)
 	{
 		StelApp::getInstance().removeProgressBar(progressBar);
-		progressBar = 0;
+		progressBar = Q_NULLPTR;
 	}
 	
 	// All files have been downloaded, finish the update
@@ -1381,17 +1400,18 @@ void Satellites::saveDownloadedUpdate(QNetworkReply* reply)
 	updateSatellites(newData);
 }
 
-void Satellites::updateObserverLocation(StelLocation)
+void Satellites::updateObserverLocation(const StelLocation &loc)
 {
+	Q_UNUSED(loc)
 	recalculateOrbitLines();
 }
 
-void Satellites::setOrbitLinesFlag(bool b)
+void Satellites::setFlagOrbitLines(bool b)
 {
 	Satellite::orbitLinesFlag = b;
 }
 
-bool Satellites::getOrbitLinesFlag() const
+bool Satellites::getFlagOrbitLines() const
 {
 	return Satellite::orbitLinesFlag;
 }
@@ -1497,7 +1517,6 @@ void Satellites::updateSatellites(TleDataHash& newTleSets)
 			}
 			if (qsMagList.contains(id))
 				sat->stdMag = qsMagList[id];
-
 		}
 		else
 		{
@@ -1530,7 +1549,7 @@ void Satellites::updateSatellites(TleDataHash& newTleSets)
 		}
 	}
 	if (addedCount)
-		qSort(satellites);
+		std::sort(satellites.begin(), satellites.end());
 	
 	if (autoRemoveEnabled && !toBeRemoved.isEmpty())
 	{
@@ -1787,13 +1806,11 @@ bool Satellites::checkJsonFileFormat()
 	}
 	catch (std::runtime_error& e)
 	{
-		qDebug() << "[Satellites] file format is wrong!";
-		qDebug() << "[Satellites] error:" << e.what();
+		qDebug() << "[Satellites] File format is wrong! Error:" << e.what();
 		return false;
 	}
 
 	return true;
-
 }
 
 bool Satellites::isValidRangeDates(const StelCore *core) const
@@ -1961,7 +1978,6 @@ IridiumFlaresPredictionList Satellites::getIridiumFlaresPrediction()
 		{
 			if ( i.value().nextJD<=predictionJD)
 			{
-
 				i.key()->update(0);
 
 				double v = i.key()->getVMagnitude(pcore);
@@ -1988,7 +2004,6 @@ IridiumFlaresPredictionList Satellites::getIridiumFlaresPrediction()
 						predictions.append(flare);
 						flareFound = true;
 						//qDebug() << "Flare:" << flare.datetime << flare.satellite;
-
 					}
 				}
 
@@ -2002,16 +2017,12 @@ IridiumFlaresPredictionList Satellites::getIridiumFlaresPrediction()
 						 <<  StelUtils::julianDayToISO8601String(predictionJD+StelApp::getInstance().getCore()->getUTCOffset(predictionJD)/24.f)
 							 ;
 */
-
 				Vec3d pos = i.key()->getAltAzPosApparent(pcore);
 
 				i.value().v = flareFound ?  17 : v; // block extra report
 				i.value().altitude = pos.latitude();
 				i.value().azimuth = M_PI - pos.longitude();
 				i.value().angleToSun = i.key()->sunReflAngle;
-
-
-
 
 				double t;
 				if (flareFound)
@@ -2044,7 +2055,6 @@ IridiumFlaresPredictionList Satellites::getIridiumFlaresPrediction()
 	return predictions;
 }
 #endif
-
 
 void Satellites::translations()
 {
@@ -2095,10 +2105,28 @@ void Satellites::translations()
 	N_("International Gamma-Ray Astrophysics Laboratory");
 	// TRANSLATORS: Satellite description.
 	N_("The Gamma-Ray Observatory");
+	// TRANSLATORS: Satellite description.
+	N_("The Microvariability and Oscillations of Stars telescope");
+	// TRANSLATORS: Satellite description.
+	N_("The Interface Region Imaging Spectrograph");
+	// TRANSLATORS: Satellite description.
+	N_("The Spectroscopic Planet Observatory for Recognition of Interaction of Atmosphere");
+	// TRANSLATORS: Satellite description.
+	M_("Nuclear Spectroscopic Telescope Array");
+	// TRANSLATORS: Satellite description.
+	N_("The Dark Matter Particle Explorer");
+	// TRANSLATORS: Satellite description.
+	N_("Arcsecond Space Telescope Enabling Research in Astrophysics");
+	// TRANSLATORS: Satellite description.
+	N_("Reuven Ramaty High Energy Solar Spectroscopic Imager");
+	// TRANSLATORS: Satellite description.
+	N_("The Chandra X-ray Observatory");
 
 	// Satellite names - a few famous objects only
 	// TRANSLATORS: Satellite name: International Space Station
 	N_("ISS (ZARYA)");
+	// TRANSLATORS: Satellite name: International Space Station
+	N_("ISS");
 	// TRANSLATORS: Satellite name: Hubble Space Telescope
 	N_("HST");
 	// TRANSLATORS: Satellite name: Spektr-R Space Observatory (or RadioAstron)

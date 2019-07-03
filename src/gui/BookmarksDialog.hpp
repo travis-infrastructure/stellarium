@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
 */
 
-#ifndef _BOOKMARKSDIALOG_HPP_
-#define _BOOKMARKSDIALOG_HPP_
+#ifndef BOOKMARKSDIALOG_HPP
+#define BOOKMARKSDIALOG_HPP
 
 #include <QObject>
 #include <QStandardItemModel>
@@ -40,6 +40,7 @@ struct bookmark
 	bool isVisibleMarker;
 	QString jd;
 	QString location;
+	double fov;
 };
 Q_DECLARE_METATYPE(bookmark)
 
@@ -68,6 +69,9 @@ private slots:
 	void goToBookmarkButtonPressed();
 	void clearBookmarksButtonPressed();
 
+	void highlightBookrmarksButtonPressed();
+	void clearHighlightsButtonPressed();
+
 	void exportBookmarks();
 	void importBookmarks();
 
@@ -75,20 +79,22 @@ private slots:
 
 private:
 	enum BookmarksColumns {
-		ColumnUUID,		//! UUID of bookmark
-		ColumnName,		//! name or designation of object
-		ColumnNameI18n,		//! Localized name of object
-		ColumnDate,		//! date and time (optional)
-		ColumnLocation,		//! location (optional)
-		ColumnCount		//! total number of columns
+		ColumnUUID,	//! UUID of bookmark
+		ColumnName,	//! name or designation of object
+		ColumnNameI18n,	//! Localized name of object
+		ColumnDate,	//! date and time (optional)
+		ColumnLocation,	//! location (optional)
+		ColumnCount	//! total number of columns
 	};
 	QStandardItemModel * bookmarksListModel;
 
 	class StelCore* core;
 	class StelObjectMgr* objectMgr;
+	class LabelMgr* labelMgr;
 
 	QString bookmarksJsonPath;
 	QHash<QString, bookmark> bookmarksCollection;
+	QList<int> highlightLabelIDs;
 
 	//! Update header names for bookmarks table
 	void setBookmarksHeaderNames();
@@ -96,9 +102,9 @@ private:
 	void addModelRow(int number, QString uuid, QString name, QString nameI18n = "", QString date = "", QString Location = "");
 
 	void loadBookmarks();
-	void saveBookmarks();
+	void saveBookmarks() const;
 	void goToBookmark(QString uuid);
 };
 
 
-#endif // _BOOKMARKSDIALOG_HPP_
+#endif // BOOKMARKSDIALOG_HPP

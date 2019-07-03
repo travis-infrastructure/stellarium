@@ -17,8 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _REMOTECONTROLDIALOG_HPP_
-#define _REMOTECONTROLDIALOG_HPP_
+#ifndef REMOTECONTROLDIALOG_HPP
+#define REMOTECONTROLDIALOG_HPP
 
 #include "StelDialog.hpp"
 #include "StelGui.hpp"
@@ -54,8 +54,7 @@ private slots:
 	void requiresRestart();
 	void restart();
 	void updateIPlabel(bool);
-
 };
 
 
-#endif /* _REMOTECONTROLDIALOG_HPP_ */
+#endif /* REMOTECONTROLDIALOG_HPP */

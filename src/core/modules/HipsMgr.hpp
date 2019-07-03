@@ -17,8 +17,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef _HIPSMGR_HPP_
-#define _HIPSMGR_HPP_
+#ifndef HIPSMGR_HPP
+#define HIPSMGR_HPP
 
 #include "StelModule.hpp"
 #include "StelHips.hpp"
@@ -31,14 +31,11 @@ class HipsMgr : public StelModule
 	Q_PROPERTY(QList<HipsSurveyP> surveys
 			MEMBER surveys
 			NOTIFY surveysChanged)
-
 	Q_PROPERTY(bool flagShow READ getFlagShow WRITE setFlagShow NOTIFY showChanged)
-
 	Q_PROPERTY(State state READ getState NOTIFY stateChanged)
 	Q_PROPERTY(bool loaded READ isLoaded NOTIFY stateChanged)
 
 public:
-
 	//! @enum State The loading state of the survey sources.
 	enum State
 	{
@@ -90,4 +87,4 @@ private:
 	int nbSourcesLoaded = 0;
 };
 
-#endif // _HIPSMGR_HPP_
+#endif // HIPSMGR_HPP

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELPLUGININTERFACE_HPP_
-#define _STELPLUGININTERFACE_HPP_
+#ifndef STELPLUGININTERFACE_HPP
+#define STELPLUGININTERFACE_HPP
 
 #include <QtPlugin>
 #include <QImage>
@@ -40,7 +40,7 @@ struct StelPluginInfo
 	QString description;	
 	//! The version of the plugin, e.g. "1.0.0"
 	QString version;
-	//! The license of the plugin, e.g. "GPLv2+"
+	//! The license of the plugin, e.g. "GPLv2 or later"
 	QString license;
 	//! Logo or preview image to display in the information dialog or an invalid image if not applicable.
 	//! The image size should be x by x pixels.
@@ -77,4 +77,4 @@ public:
 #define StelPluginInterface_iid "org.stellarium.StelPluginInterface/2.0"
 Q_DECLARE_INTERFACE(StelPluginInterface, StelPluginInterface_iid)
 
-#endif // _STELPLUGININTERFACE_HPP_
+#endif // STELPLUGININTERFACE_HPP

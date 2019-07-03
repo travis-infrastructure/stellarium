@@ -731,9 +731,16 @@ QString NomenclatureItem::getNomenclatureTypeDescription() const
 
 float NomenclatureItem::getSelectPriority(const StelCore* core) const
 {
-	 // The item may be selectable when it over 25px size only
-	if (getFlagLabels() && (getAngularSize(core)*M_PI/180.*core->getProjection(StelCore::FrameJ2000)->getPixelPerRadAtCenter()>=25.))
+	if (planet->getVMagnitude(core)>=20.f)
+	{
+		// The planet is too faint for view (in the deep shadow for example), so let's disable select the nomenclature
+		return StelObject::getSelectPriority(core)+25.f;
+	}
+	else if (getFlagLabels() && (getAngularSize(core)*M_PI/180.*core->getProjection(StelCore::FrameJ2000)->getPixelPerRadAtCenter()>=25.))
+	{
+		// The item may be good selectable when it over 25px size only
 		return StelObject::getSelectPriority(core)-25.f;
+	}
 	else
 		return StelObject::getSelectPriority(core)-2.f;
 }
@@ -820,7 +827,7 @@ Vec3d NomenclatureItem::getJ2000EquatorialPos(const StelCore* core) const
 	jde = core->getJDE();
 	const Vec3d equPos = planet->getJ2000EquatorialPos(core);
 	// Calculate the radius of the planet. It is necessary to re-scale it
-	const double r = planet->getRadius() * planet->getSphereScale();
+	const double r = planet->getEquatorialRadius() * planet->getSphereScale();
 
 	Vec3d XYZ0;
 //	// For now, assume spherical planets, simply scale by radius.

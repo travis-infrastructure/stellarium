@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _EXOPLANET_HPP_
-#define _EXOPLANET_HPP_ 1
+#ifndef EXOPLANET_HPP
+#define EXOPLANET_HPP
 
 #include <QVariant>
 #include <QString>
@@ -33,14 +33,14 @@
 //! @ingroup exoplanets
 typedef struct
 {
-	QString planetName;			//! Exoplanet designation
+	QString planetName;		//! Exoplanet designation
 	QString planetProperName;	//! Exoplanet proper name
 	float mass;				//! Exoplanet mass (Mjup)
 	float radius;				//! Exoplanet radius (Rjup)
 	float period;				//! Exoplanet period (days)
 	float semiAxis;				//! Exoplanet orbit semi-major axis (AU)
 	float eccentricity;			//! Exoplanet orbit eccentricity
-	float inclination;				//! Exoplanet orbit inclination
+	float inclination;			//! Exoplanet orbit inclination
 	float angleDistance;			//! Exoplanet angle distance
 	int discovered;				//! Exoplanet discovered year
 	QString pclass;				//! Exoplanet classification from host star spectral type (F, G, K, M), habitable zone (hot, warm, cold) and size (miniterran, subterran, terran, superterran, jovian, neptunian)
@@ -62,6 +62,7 @@ class StelPainter;
 class Exoplanet : public StelObject
 {
 	friend class Exoplanets;
+
 public:
 	static const QString EXOPLANET_TYPE;
 
@@ -183,7 +184,6 @@ public:
 	}
 
 private:
-
 	QString getPlanetaryClassI18n(QString ptype) const;
 
 	bool initialized;
@@ -231,4 +231,4 @@ private:
 	LinearFader labelsFader;
 };
 
-#endif // _EXOPLANET_HPP_
+#endif // EXOPLANET_HPP

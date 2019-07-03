@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _S3DSCENE_HPP_
-#define _S3DSCENE_HPP_
+#ifndef S3DSCENE_HPP
+#define S3DSCENE_HPP
 
 #include "StelOBJ.hpp"
 #include "StelTextureTypes.hpp"
@@ -40,7 +40,6 @@ public:
 		Material() : traits(), bAlphatest(false), bBackface(false), fAlphaThreshold(0.5),
 			     vis_fadeIn(-DBL_MAX, -DBL_MAX),vis_fadeOut(DBL_MAX,DBL_MAX),vis_fadeValue(1.0)
 		{
-
 		}
 
 		Material(const StelOBJ::Material& stelMat)
@@ -184,4 +183,4 @@ private:
 	static void finalizeTexture(StelTextureSP& tex);
 };
 
-#endif // _S3DSCENE_HPP_
+#endif // S3DSCENE_HPP

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _TESTDATES_HPP_
-#define _TESTDATES_HPP_
+#ifndef TESTDATES_HPP
+#define TESTDATES_HPP
 
 #include <QObject>
 #include <QTest>
@@ -31,6 +31,9 @@ private slots:
 	void formatting();
 	void testRolloverAndValidity();
 	void testJulianDays();
+	void testLeapYears();
+	void testNumberOfDaysInMonthInYear();
+	void testFixedFromGregorian();
 	void benchmarkOldGetDateFromJulianDay();
 	void benchmarkGetDateFromJulianDayFloatingPoint();
 	void benchmarkGetDateFromJulianDay();
@@ -41,5 +44,5 @@ private:
 	void testJulianDaysRange(int jd_first, int jd_last);
 };
 
-#endif // _TESTDATES_HPP_
+#endif // _TESTDATES_HPP
 

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
  
-#ifndef REMOTECONTROL_HPP_
-#define REMOTECONTROL_HPP_
+#ifndef REMOTECONTROL_HPP
+#define REMOTECONTROL_HPP
 
 #include <QFont>
 #include <QKeyEvent>
@@ -135,7 +135,6 @@ signals:
 
 
 private:
-
 	//the http server
 	HttpListener* httpListener;
 	//the main request handler
@@ -176,5 +175,5 @@ public:
 	virtual QObjectList getExtensionList() const { return QObjectList(); }
 };
 
-#endif /*REMOTECONTROL_HPP_*/
+#endif /*REMOTECONTROL_HPP*/
 

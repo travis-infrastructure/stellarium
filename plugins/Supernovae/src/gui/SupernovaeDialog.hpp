@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
 */
  
-#ifndef _SUPERNOVAEDIALOG_HPP_
-#define _SUPERNOVAEDIALOG_HPP_
+#ifndef SUPERNOVAEDIALOG_HPP
+#define SUPERNOVAEDIALOG_HPP
 
 #include <QObject>
 #include "StelDialog.hpp"
@@ -61,7 +61,6 @@ private:
 	void setAboutHtml(void);
 	void updateGuiFromSettings(void);
 	QTimer* updateTimer;
-
 };
 
-#endif // _SUPERNOVAEDIALOG_HPP_
+#endif // SUPERNOVAEDIALOG_HPP

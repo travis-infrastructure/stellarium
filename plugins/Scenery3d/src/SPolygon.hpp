@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _SPOLYGON_HPP_
-#define _SPOLYGON_HPP_
+#ifndef SPOLYGON_HPP
+#define SPOLYGON_HPP
 
 #include "VecMath.hpp"
 
@@ -30,7 +30,6 @@ class Plane;
 class SPolygon
 {
 public:
-
 	SPolygon();
 	//! Construct a polygon from 4 corner vertices
 	SPolygon(const Vec3f &c0, const Vec3f &c1, const Vec3f &c2, const Vec3f &c3);
@@ -55,7 +54,6 @@ public:
 	void render();
 
 private:
-
 };
 
 #endif

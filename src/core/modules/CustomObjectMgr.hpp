@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _CUSTOMOBJECTMGR_HPP_
-#define _CUSTOMOBJECTMGR_HPP_
+#ifndef CUSTOMOBJECTMGR_HPP
+#define CUSTOMOBJECTMGR_HPP
 
 #include "StelObjectModule.hpp"
 #include "StelObject.hpp"
@@ -50,20 +50,20 @@ public:
 	virtual double getCallOrder(StelModuleActionName actionName) const;
 
 	///////////////////////////////////////////////////////////////////////////
-	// Methods defined in StelObjectManager class
+	// Methods defined in StelObjectModule class
 	//! Used to get a list of objects which are near to some position.
-	//! @param v a vector representing the position in th sky around which to search for nebulae.
-	//! @param limitFov the field of view around the position v in which to search for satellites.
+	//! @param v a vector representing the position in the sky around which to search for objects.
+	//! @param limitFov the field of view around the position v in which to search for objects.
 	//! @param core the StelCore to use for computations.
-	//! @return an list containing the satellites located inside the limitFov circle around position v.
+	//! @return a list containing the objects located inside the limitFov circle around position v.
 	virtual QList<StelObjectP> searchAround(const Vec3d& v, double limitFov, const StelCore* core) const;
 
-	//! Return the matching satellite object's pointer if exists or Q_NULLPTR.
-	//! @param nameI18n The case in-sensistive satellite name
+	//! @return the matching object's pointer if exists or Q_NULLPTR.
+	//! @param nameI18n The case in-sensitive localized name
 	virtual StelObjectP searchByNameI18n(const QString& nameI18n) const;
 
-	//! Return the matching satellite if exists or Q_NULLPTR.
-	//! @param name The case in-sensistive standard program name
+	//! @return the matching object if exists or Q_NULLPTR.
+	//! @param name The case in-sensitive english name
 	virtual StelObjectP searchByName(const QString& name) const;
 
 	virtual StelObjectP searchByID(const QString &id) const { return qSharedPointerCast<StelObject>(searchByEnglishName(id)); }
@@ -152,6 +152,13 @@ public slots:
 	//! @return current size
 	float getMarkersSize(void) const;
 
+	//! Set the select priority for custom objects
+	//! @param priority level
+	void setSelectPriority(float priority);
+
+	//! Get the select priority for custom objects
+	float getSelectPriority(void) const;
+
 private slots:
 	//! Called when a new object is selected.
 	void selectedObjectChange(StelModule::StelModuleSelectAction action);
@@ -159,6 +166,8 @@ private slots:
 	//! Remove just one custom object
 	void removeCustomObject(CustomObjectP);
 
+	//! Connect this to StelApp font size.
+	void setFontSize(int s){font.setPixelSize(s);}
 private:
 	// Font used for displaying our text
 	QFont font;
@@ -166,6 +175,7 @@ private:
 	StelTextureSP texPointer;
 	QList<CustomObjectP> customObjects;
 
+	Vec3f hightlightColor;
 	int countMarkers;
 	int radiusLimit;
 
@@ -183,4 +193,4 @@ private:
 	CustomObjectP selected;
 };
 
-#endif /*_CUSTOMOBJECTMGR_HPP_*/
+#endif /* CUSTOMOBJECTMGR_HPP */

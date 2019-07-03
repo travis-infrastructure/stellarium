@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
  
-#ifndef _TUINODECOLOR_HPP_
-#define _TUINODECOLOR_HPP_ 1
+#ifndef TUINODECOLOR_HPP
+#define TUINODECOLOR_HPP
 
 #include "TuiNodeEditable.hpp"
 #include "VecMath.hpp"
@@ -30,6 +30,7 @@
 class TuiNodeColor : public TuiNodeEditable
 {
 	Q_OBJECT
+
 public:
 	//! Create a TuiNodeColor node.
 	//! @param text the text to be displayed for this node
@@ -49,8 +50,7 @@ private:
 	Vec3f value;
 	int editingPart;
 	void incPart(int part, bool add);
-
 };
 
-#endif /*_TUINODECOLOR_HPP_*/
+#endif /*TUINODECOLOR_HPP*/
 

@@ -173,6 +173,11 @@ void StelCore::init()
 	{
 		location = locationMgr->locationFromCLI();
 	}
+	else if (defaultLocationID.startsWith("GPS", Qt::CaseInsensitive))
+	{
+		// The location is obtained already from init_location/last_resort_location
+		location.name = conf->value("init_location/location").toString();
+	}
 	else
 	{
 		location = locationMgr->locationForString(defaultLocationID);
@@ -288,6 +293,7 @@ void StelCore::init()
 	actionsMgr->addAction("actionAdd_Julian_Year", timeGroup, N_("Add 1 Julian year"), this, "addJulianYear()");
 	actionsMgr->addAction("actionAdd_Julian_Century", timeGroup, N_("Add 1 Julian century"), this, "addJulianYears()");
 	actionsMgr->addAction("actionAdd_Gaussian_Year", timeGroup, N_("Add 1 Gaussian year"), this, "addGaussianYear()");
+	actionsMgr->addAction("actionAdd_Calendric_Month", timeGroup, N_("Add 1 calendric month"), this, "addCalendricMonth()");
 	actionsMgr->addAction("actionSubtract_Sidereal_Day", timeGroup, N_("Subtract 1 sidereal day"), this, "subtractSiderealDay()", "Alt+-");
 	actionsMgr->addAction("actionSubtract_Sidereal_Week", timeGroup, N_("Subtract 7 sidereal days"), this, "subtractSiderealWeek()");
 	actionsMgr->addAction("actionSubtract_Sidereal_Year", timeGroup, N_("Subtract 1 sidereal year"), this, "subtractSiderealYear()", "Ctrl+Alt+Shift+[");
@@ -306,6 +312,7 @@ void StelCore::init()
 	actionsMgr->addAction("actionSubtract_Julian_Year", timeGroup, N_("Subtract 1 Julian year"), this, "subtractJulianYear()");
 	actionsMgr->addAction("actionSubtract_Julian_Century", timeGroup, N_("Subtract 1 Julian century"), this, "subtractJulianYears()");
 	actionsMgr->addAction("actionSubtract_Gaussian_Year", timeGroup, N_("Subtract 1 Gaussian year"), this, "subtractGaussianYear()");
+	actionsMgr->addAction("actionSubtract_Calendric_Month", timeGroup, N_("Subtract 1 calendric month"), this, "subtractCalendricMonth()");
 
 	actionsMgr->addAction("actionSet_Home_Planet_To_Selected", movementGroup, N_("Set home planet to selected planet"), this, "moveObserverToSelected()", "Ctrl+G");
 	actionsMgr->addAction("actionGo_Home_Global", movementGroup, N_("Go to home"), this, "returnToHome()", "Ctrl+H");
@@ -604,7 +611,7 @@ void StelCore::setFlagGravityLabels(bool gravity)
 	emit flagGravityLabelsChanged(gravity);
 }
 
-bool StelCore::getFlagGravityLabels()
+bool StelCore::getFlagGravityLabels() const
 {
 	return currentProjectorParams.gravityLabels;
 }
@@ -978,9 +985,9 @@ void StelCore::updateTransformMatrices()
 	// Please keep the commented stuff until situation is really solved.
 	if (flagUseTopocentricCoordinates)
 	{
-		Vec3d offset=position->getTopographicOffsetFromCenter(); // [rho cosPhi', rho sinPhi', phi'_rad]
+		const Vec4d offset=position->getTopographicOffsetFromCenter(); // [rho cosPhi', rho sinPhi', phi'_rad, rho]
 		const double sigma=position->getCurrentLocation().latitude*M_PI/180.0 - offset.v[2];
-		const double rho=position->getDistanceFromCenter();
+		const double rho=offset.v[3];
 
 		matAltAzToHeliocentricEclipticJ2000 =  Mat4d::translation(position->getCenterVsop87Pos()) * tmp *
 				Mat4d::translation(Vec3d(rho*sin(sigma), 0., rho*cos(sigma) ));
@@ -1004,8 +1011,6 @@ void StelCore::updateTransformMatrices()
 
 //		matHeliocentricEclipticJ2000ToAltAz =  Mat4d::translation(Vec3d(0.,0.,-position->getDistanceFromCenter())) * tmp.transpose() *
 //				Mat4d::translation(-position->getCenterVsop87Pos());
-
-
 	}
 	else
 	{
@@ -1265,42 +1270,105 @@ float StelCore::getUTCOffset(const double JD) const
 	{
 		//qWarning() << "JD " << QString("%1").arg(JD) << " out of bounds of QT help with GMT shift, using current datetime";
 		// Assumes the GMT shift was always the same before year -4710
+		// NOTE: QDateTime has no year 0, and therefore likely different leap year rules.
+		// Under which circumstances do we get invalid universal?
 		universal = QDateTime(QDate(-4710, month, day), QTime(hour, minute, second), Qt::UTC);
 	}
 
+#if defined(Q_OS_WIN)
+	if (abs(year)<3)
+	{
+		// Mitigate a QTBUG on Windows (GH #594).
+		// This bug causes offset to be MIN_INT in January to March, 1AD.
+		// We assume a constant offset in this remote history,
+		// so we construct yet another date to get a valid offset.
+		// Application of the named time zones is inappropriate in any case.
+		universal = QDateTime(QDate(3, month, day), QTime(hour, minute, second), Qt::UTC);
+	}
+#endif
 	StelLocation loc = getCurrentLocation();
 	QString tzName = getCurrentTimeZone();
-	QTimeZone* tz = new QTimeZone(tzName.toUtf8());
+	QTimeZone tz(tzName.toUtf8());
+	if (!tz.isValid() && !QString("LMST LTST system_default").contains(tzName))
+	{
+		qWarning() << "Invalid timezone: " << tzName;
+	}
 
 	int shiftInSeconds = 0;
-	if (tzName=="system_default" || (loc.planetName=="Earth" && !tz->isValid() && !QString("LMST LTST").contains(tzName)))
+	if (tzName=="system_default" || (loc.planetName=="Earth" && !tz.isValid() && !QString("LMST LTST").contains(tzName)))
 	{
 		QDateTime local = universal.toLocalTime();
 		//Both timezones should be interpreted as UTC because secsTo() converts both
 		//times to UTC if their zones have different daylight saving time rules.
 		local.setTimeSpec(Qt::UTC);
 		shiftInSeconds = universal.secsTo(local);
+		if (abs(shiftInSeconds)>50000 || shiftInSeconds==INT_MIN)
+		{
+			qDebug() << "TZ system_default or invalid, At JD" << QString::number(JD, 'g', 11) << ", shift:" << shiftInSeconds;
+		}
 	}
 	else
 	{
 		// The first adoption of a standard time was on December 1, 1847 in Great Britain
-		if (tz->isValid() && loc.planetName=="Earth" && (JD>=StelCore::TZ_ERA_BEGINNING || getUseCustomTimeZone()))
+		if (tz.isValid() && loc.planetName=="Earth" && (JD>=StelCore::TZ_ERA_BEGINNING || getUseCustomTimeZone()))
 		{
 			if (getUseDST())
-				shiftInSeconds = tz->offsetFromUtc(universal);
+				shiftInSeconds = tz.offsetFromUtc(universal);
 			else
-				shiftInSeconds = tz->standardTimeOffset(universal);
+				shiftInSeconds = tz.standardTimeOffset(universal);
+			if (abs(shiftInSeconds)>500000 || shiftInSeconds==INT_MIN)
+			{
+				// Something very strange has happened. The Windows-only clause above already mitigated GH #594.
+				// Trigger this with a named custom TZ like Europe/Stockholm.
+				// Then try to wheel back some date in January-March from year 10 to 0. Instead of year 1, it jumps to 70,
+				// an offset of INT_MIN
+				qWarning() << "ERROR TRAPPED! --- Please submit a bug report with this logfile attached.";
+				qWarning() << "TZ" << tz << "valid, but at JD" << QString::number(JD, 'g', 11) << ", shift:" << shiftInSeconds;
+				qWarning() << "Universal reference date: " << universal.toString();
+			}
 		}
 		else
+		{
 			shiftInSeconds = (loc.longitude/15.f)*3600.f; // Local Mean Solar Time
-
+		}
 		if (tzName=="LTST")
 			shiftInSeconds += getSolutionEquationOfTime(JD)*60;
-
 	}
+	#ifdef Q_OS_WIN
+	// A dirty hack for report: https://github.com/Stellarium/stellarium/issues/686
+	// TODO: switch to IANA TZ on all operating systems
+	if (tzName=="Europe/Volgograd")
+		shiftInSeconds = 4*3600; // UTC+04:00
+	#endif
 
-	delete tz;
-	tz = Q_NULLPTR;
+	// Extraterrestrial: Either use the configured Terrestrial timezone, or even a pseudo-LMST based on planet's rotation speed?
+	if (loc.planetName!="Earth")
+	{
+		if (tz.isValid() && (JD>=StelCore::TZ_ERA_BEGINNING || getUseCustomTimeZone()))
+		{
+			if (getUseDST())
+				shiftInSeconds = tz.offsetFromUtc(universal);
+			else
+				shiftInSeconds = tz.standardTimeOffset(universal);
+			if (shiftInSeconds==INT_MIN) // triggered error
+			{
+				// Something very strange has happened. The Windows-only clause above already mitigated GH #594.
+				// Trigger this with a named custom TZ like Europe/Stockholm.
+				// Then try to wheel back some date in January-March from year 10 to 0. Instead of year 1, it jumps to 70,
+				// an offset of INT_MIN
+				qWarning() << "ERROR TRAPPED! --- Please submit a bug report with this logfile attached.";
+				qWarning() << "TZ" << tz << "valid, but at JD" << QString::number(JD, 'g', 11) << ", shift:" << shiftInSeconds;
+				qWarning() << "Universal reference date: " << universal.toString();
+			}
+		}
+		else
+		{
+			// TODO: This should give "mean solar time" for any planet.
+			// Combine rotation and orbit, or (for moons) rotation and orbit of parent planet.
+			// LTST is even worse, needs equation of time for other planets.
+			shiftInSeconds = 0; // For now, give UT
+		}
+	}
 
 	float shiftInHours = shiftInSeconds / 3600.0f;
 	return shiftInHours;
@@ -1313,7 +1381,15 @@ QString StelCore::getCurrentTimeZone() const
 
 void StelCore::setCurrentTimeZone(const QString& tz)
 {
-	currentTimeZone = tz;
+	if (StelApp::getInstance().getLocationMgr().getAllTimezoneNames().contains(tz))
+	{
+		currentTimeZone = tz;
+		emit(currentTimeZoneChanged(tz));
+	}
+	else
+	{
+		qWarning() << "StelCore: Invalid timezone name:" << tz << " -- not setting timezone.";
+	}
 }
 
 bool StelCore::getUseDST() const
@@ -1325,6 +1401,7 @@ void StelCore::setUseDST(const bool b)
 {
 	flagUseDST = b;
 	StelApp::getInstance().getSettings()->setValue("localization/flag_dst", b);
+	emit flagUseDSTChanged(b);
 }
 
 bool StelCore::getUseCustomTimeZone() const
@@ -1335,6 +1412,7 @@ bool StelCore::getUseCustomTimeZone() const
 void StelCore::setUseCustomTimeZone(const bool b)
 {
 	flagUseCTZ = b;
+	emit useCustomTimeZoneChanged(b);
 }
 
 double StelCore::getSolutionEquationOfTime(const double JDE) const
@@ -1412,7 +1490,7 @@ bool StelCore::getIsTimeNow(void) const
 	return previousResult;
 }
 
-QTime StelCore::getInitTodayTime(void)
+QTime StelCore::getInitTodayTime(void) const
 {
 	return initTodayTime;
 }
@@ -1496,6 +1574,22 @@ void StelCore::addDraconicMonth()
 void StelCore::addMeanTropicalMonth()
 {
 	addSolarDays(27.321582241);
+}
+
+void StelCore::addCalendricMonth()
+{
+	double cjd = getJD();
+	int year, month, day, hour, minute, second;
+	StelUtils::getDateFromJulianDay(cjd, &year, &month, &day);
+	StelUtils::getTimeFromJulianDay(cjd, &hour, &minute, &second);
+	month++;
+	if (month>12)
+	{
+		month = 1;
+		year++;
+	}
+	StelUtils::getJDFromDate(&cjd, year, month, day, hour, minute, second);
+	setJD(cjd);
 }
 
 void StelCore::addAnomalisticMonth()
@@ -1621,6 +1715,22 @@ void StelCore::subtractMeanTropicalMonth()
 	addSolarDays(-27.321582241);
 }
 
+void StelCore::subtractCalendricMonth()
+{
+	double cjd = getJD();
+	int year, month, day, hour, minute, second;
+	StelUtils::getDateFromJulianDay(cjd, &year, &month, &day);
+	StelUtils::getTimeFromJulianDay(cjd, &hour, &minute, &second);
+	month--;
+	if (month<1)
+	{
+		month = 12;
+		year--;
+	}
+	StelUtils::getJDFromDate(&cjd, year, month, day, hour, minute, second);
+	setJD(cjd);
+}
+
 void StelCore::subtractAnomalisticMonth()
 {
 	addSolarDays(-27.554549878);
@@ -1713,7 +1823,7 @@ double StelCore::getLocalSiderealYearLength() const
 	return position->getHomePlanet()->getSiderealPeriod();
 }
 
-QString StelCore::getStartupTimeMode()
+QString StelCore::getStartupTimeMode() const
 {
 	return startupTimeMode;
 }
@@ -1724,8 +1834,8 @@ void StelCore::increaseTimeSpeed()
 	double s = getTimeRate();
 	if (s>=JD_SECOND) s*=10.;
 	else if (s<-JD_SECOND) s/=10.;
-	else if (s>=0. && s<JD_SECOND) s=JD_SECOND;
-	else if (s>=-JD_SECOND && s<0.) s=0.;
+	else if (s>=0.) s=JD_SECOND;
+	else s=0.;
 	setTimeRate(s);
 }
 
@@ -1735,8 +1845,8 @@ void StelCore::decreaseTimeSpeed()
 	double s = getTimeRate();
 	if (s>JD_SECOND) s/=10.;
 	else if (s<=-JD_SECOND) s*=10.;
-	else if (s>-JD_SECOND && s<=0.) s=-JD_SECOND;
-	else if (s>0. && s<=JD_SECOND) s=0.;
+	else if (s<=0.) s=-JD_SECOND;
+	else s=0.;
 	setTimeRate(s);
 }
 
@@ -1745,8 +1855,8 @@ void StelCore::increaseTimeSpeedLess()
 	double s = getTimeRate();
 	if (s>=JD_SECOND) s*=2.;
 	else if (s<-JD_SECOND) s/=2.;
-	else if (s>=0. && s<JD_SECOND) s=JD_SECOND;
-	else if (s>=-JD_SECOND && s<0.) s=0.;
+	else if (s>=0.) s=JD_SECOND;
+	else s=0.;
 	setTimeRate(s);
 }
 
@@ -1755,8 +1865,8 @@ void StelCore::decreaseTimeSpeedLess()
 	double s = getTimeRate();
 	if (s>JD_SECOND) s/=2.;
 	else if (s<=-JD_SECOND) s*=2.;
-	else if (s>-JD_SECOND && s<=0.) s=-JD_SECOND;
-	else if (s>0. && s<=JD_SECOND) s=0.;
+	else if (s<=0.) s=-JD_SECOND;
+	else s=0.;
 	setTimeRate(s);
 }
 
@@ -1923,35 +2033,35 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 		case WithoutCorrection:
 			// Without correction, DeltaT is disabled
 			deltaTfunc = StelUtils::getDeltaTwithoutCorrection;
-			deltaTnDot = -26.0; // n.dot = -26.0"/cy/cy OR WHAT SHALL WE DO HERE?
+			deltaTnDot = -26.f; // n.dot = -26.0"/cy/cy OR WHAT SHALL WE DO HERE?
 			deltaTdontUseMoon = true;
 			deltaTstart	= INT_MIN;
 			deltaTfinish	= INT_MAX;
 			break;
 		case Schoch:
 			// Schoch (1931) algorithm for DeltaT
-			deltaTnDot = -29.68; // n.dot = -29.68"/cy/cy
+			deltaTnDot = -29.68f; // n.dot = -29.68"/cy/cy
 			deltaTfunc = StelUtils::getDeltaTBySchoch;
-			deltaTstart	= INT_MIN;
-			deltaTfinish	= INT_MAX;
+			deltaTstart	= -300;
+			deltaTfinish	= 1980;
 			break;
 		case Clemence:
 			// Clemence (1948) algorithm for DeltaT
-			deltaTnDot = -22.44; // n.dot = -22.44 "/cy/cy
+			deltaTnDot = -22.44f; // n.dot = -22.44 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByClemence;
 			deltaTstart	= 1681;
 			deltaTfinish	= 1900;
 			break;
 		case IAU:
 			// IAU (1952) algorithm for DeltaT, based on observations by Spencer Jones (1939)
-			deltaTnDot = -22.44; // n.dot = -22.44 "/cy/cy
+			deltaTnDot = -22.44f; // n.dot = -22.44 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByIAU;
 			deltaTstart	= 1681;
 			deltaTfinish	= 1936; // Details in http://adsabs.harvard.edu/abs/1939MNRAS..99..541S
 			break;
 		case AstronomicalEphemeris:
 			// Astronomical Ephemeris (1960) algorithm for DeltaT
-			deltaTnDot = -22.44; // n.dot = -22.44 "/cy/cy
+			deltaTnDot = -22.44f; // n.dot = -22.44 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByAstronomicalEphemeris;
 			// GZ: What is the source of "1681..1900"? Expl.Suppl.AE 1961-p87 says "...over periods extending back to ancient times"
 			// I changed to what I estimate.
@@ -1961,35 +2071,35 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 		case TuckermanGoldstine:
 			// Tuckerman (1962, 1964) & Goldstine (1973) algorithm for DeltaT
 			//FIXME: n.dot
-			deltaTnDot = -22.44; // n.dot = -22.44 "/cy/cy ???
+			deltaTnDot = -22.44f; // n.dot = -22.44 "/cy/cy ???
 			deltaTfunc = StelUtils::getDeltaTByTuckermanGoldstine;
 			deltaTstart	= -600;
 			deltaTfinish	= 1649;
 			break;
 		case MullerStephenson:
 			// Muller & Stephenson (1975) algorithm for DeltaT
-			deltaTnDot = -37.5; // n.dot = -37.5 "/cy/cy
+			deltaTnDot = -37.5f; // n.dot = -37.5 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByMullerStephenson;
 			deltaTstart	= -1375;
 			deltaTfinish	= 1975;
 			break;
 		case Stephenson1978:
 			// Stephenson (1978) algorithm for DeltaT
-			deltaTnDot = -30.0; // n.dot = -30.0 "/cy/cy
+			deltaTnDot = -30.0f; // n.dot = -30.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByStephenson1978;
 			deltaTstart	= INT_MIN; // Range unknown!
 			deltaTfinish	= INT_MAX;
 			break;
 		case SchmadelZech1979:
 			// Schmadel & Zech (1979) algorithm for DeltaT
-			deltaTnDot = -23.8946; // n.dot = -23.8946 "/cy/cy
+			deltaTnDot = -23.8946f; // n.dot = -23.8946 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTBySchmadelZech1979;
 			deltaTstart	= 1800;
 			deltaTfinish	= 1975;
 			break;
 		case MorrisonStephenson1982:
 			// Morrison & Stephenson (1982) algorithm for DeltaT (used by RedShift)
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByMorrisonStephenson1982;
 			// FIXME: This is correct valid range?
 			deltaTstart	= -4000;
@@ -1997,14 +2107,14 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 			break;
 		case StephensonMorrison1984:
 			// Stephenson & Morrison (1984) algorithm for DeltaT
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByStephensonMorrison1984;
 			deltaTstart	= -391;
 			deltaTfinish	= 1600;
 			break;
 		case StephensonHoulden:
 			// Stephenson & Houlden (1986) algorithm for DeltaT. The limits are implicitly given by the tabulated values.
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByStephensonHoulden;
 			deltaTstart	= -600;
 			deltaTfinish	= 1650;
@@ -2012,14 +2122,14 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 		case Espenak:
 			// Espenak (1987, 1989) algorithm for DeltaT
 			//FIXME: n.dot
-			deltaTnDot = -23.8946; // n.dot = -23.8946 "/cy/cy ???
+			deltaTnDot = -23.8946f; // n.dot = -23.8946 "/cy/cy ???
 			deltaTfunc = StelUtils::getDeltaTByEspenak;
 			deltaTstart	= 1950;
 			deltaTfinish	= 2100;
 			break;
 		case Borkowski:
 			// Borkowski (1988) algorithm for DeltaT, relates to ELP2000-85!
-			deltaTnDot = -23.895; // GZ: I see -23.895 in the paper, not -23.859; (?) // n.dot = -23.859 "/cy/cy
+			deltaTnDot = -23.895f; // GZ: I see -23.895 in the paper, not -23.859; (?) // n.dot = -23.859 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByBorkowski;
 			deltaTstart	= -2136;
 			deltaTfinish	= 1715;
@@ -2027,14 +2137,14 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 		case SchmadelZech1988:
 			// Schmadel & Zech (1988) algorithm for DeltaT
 			//FIXME: n.dot
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy ???
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy ???
 			deltaTfunc = StelUtils::getDeltaTBySchmadelZech1988;
 			deltaTstart	= 1800;
 			deltaTfinish	= 1988;
 			break;
 		case ChaprontTouze:
 			// Chapront-Touzé & Chapront (1991) algorithm for DeltaT
-			deltaTnDot = -23.8946; // n.dot = -23.8946 "/cy/cy
+			deltaTnDot = -23.8946f; // n.dot = -23.8946 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByChaprontTouze;
 			// FIXME: Is it valid range?
 			deltaTstart	= -4000;
@@ -2042,74 +2152,75 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 			break;
 		case StephensonMorrison1995:
 			// Stephenson & Morrison (1995) algorithm for DeltaT
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByStephensonMorrison1995;
 			deltaTstart	= -700;
 			deltaTfinish	= 1600;
 			break;
 		case Stephenson1997:
 			// Stephenson (1997) algorithm for DeltaT
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByStephenson1997;
 			deltaTstart	= -500;
 			deltaTfinish	= 1600;
 			break;
 		case ChaprontMeeus:
 			// Chapront, Chapront-Touze & Francou (1997) & Meeus (1998) algorithm for DeltaT
-			deltaTnDot = -25.7376; // n.dot = -25.7376 "/cy/cy
+			deltaTnDot = -25.7376f; // n.dot = -25.7376 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByChaprontMeeus;
 			deltaTstart	= -400; // 1800; // not explicitly given, but guess based on his using ChaprontFrancou which is cited elsewhere in a similar term with -391.
 			deltaTfinish	=  2150; // 1997;
 			break;
 		case JPLHorizons:
 			// JPL Horizons algorithm for DeltaT
-			deltaTnDot = -25.7376; // n.dot = -25.7376 "/cy/cy
+			deltaTnDot = -25.7376f; // n.dot = -25.7376 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByJPLHorizons;
 			deltaTstart	= -2999;
 			deltaTfinish	= 1620;
 			break;
 		case MeeusSimons:
 			// Meeus & Simons (2000) algorithm for DeltaT
-			deltaTnDot = -25.7376; // n.dot = -25.7376 "/cy/cy
+			deltaTnDot = -25.7376f; // n.dot = -25.7376 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByMeeusSimons;
 			deltaTstart	= 1620;
 			deltaTfinish	= 2000;
 			break;
 		case ReingoldDershowitz:
-			// Reingold & Dershowitz (2002, 2007) algorithm for DeltaT
+			// Reingold & Dershowitz (2002, 2007, 2018) algorithm for DeltaT
 			// FIXME: n.dot
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy ???
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy ???
 			deltaTfunc = StelUtils::getDeltaTByReingoldDershowitz;
 			// GZ: while not original work, it's based on Meeus and therefore the full implementation covers likewise approximately:
-			deltaTstart	= -400; //1620;
-			deltaTfinish	= 2100; //2019;
+			// AW: limits from 4th edition:
+			deltaTstart	= -500; //1620;
+			deltaTfinish	= 2150; //2019;
 			break;
 		case MontenbruckPfleger:
 			// Montenbruck & Pfleger (2000) algorithm for DeltaT
 			// NOTE: book does not contain n.dot value
 			// FIXME: n.dot
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy ???
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy ???
 			deltaTfunc = StelUtils::getDeltaTByMontenbruckPfleger;
 			deltaTstart	= 1825;
 			deltaTfinish	= 2005;
 			break;
 		case MorrisonStephenson2004:
 			// Morrison & Stephenson (2004, 2005) algorithm for DeltaT
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByMorrisonStephenson2004;
 			deltaTstart	= -1000;
 			deltaTfinish	= 2000;
 			break;
 		case Reijs:
 			// Reijs (2006) algorithm for DeltaT
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByReijs;
 			deltaTstart	= -1500; // -500; // GZ: It models long-term variability, so we should reflect this. Not sure on the begin, though.
 			deltaTfinish	= 1100; // not 1620; // GZ: Not applicable for telescopic era, and better not after 1100 (pers.comm.)
 			break;
 		case EspenakMeeus:
 			// Espenak & Meeus (2006) algorithm for DeltaT
-			deltaTnDot = -25.858; // n.dot = -25.858 "/cy/cy
+			deltaTnDot = -25.858f; // n.dot = -25.858 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByEspenakMeeus;
 			deltaTstart	= -1999;
 			deltaTfinish	= 3000;
@@ -2117,7 +2228,7 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 		case EspenakMeeusZeroMoonAccel:
 			// This is a trying area. Something is wrong with DeltaT, maybe ndot is still not applied correctly.
 			// Espenak & Meeus (2006) algorithm for DeltaT
-			deltaTnDot = -25.858; // n.dot = -25.858 "/cy/cy
+			deltaTnDot = -25.858f; // n.dot = -25.858 "/cy/cy
 			deltaTdontUseMoon = true;
 			deltaTfunc = StelUtils::getDeltaTByEspenakMeeus;
 			deltaTstart	= -1999;
@@ -2125,14 +2236,14 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 			break;
 		case Banjevic:
 			// Banjevic (2006) algorithm for DeltaT
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByBanjevic;
 			deltaTstart	= -2020;
 			deltaTfinish	= 1620;
 			break;
 		case IslamSadiqQureshi:
 			// Islam, Sadiq & Qureshi (2008 + revisited 2013) algorithm for DeltaT (6 polynomials)
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByIslamSadiqQureshi;
 			deltaTdontUseMoon = true; // Seems this solutions doesn't use value of secular acceleration of the Moon
 			deltaTstart	= 1620;
@@ -2140,17 +2251,28 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 			break;
 		case KhalidSultanaZaidi:
 			// M. Khalid, Mariam Sultana and Faheem Zaidi polinomial approximation of time period 1620-2013 (2014)
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc = StelUtils::getDeltaTByKhalidSultanaZaidi;
 			deltaTdontUseMoon = true; // Seems this solutions doesn't use value of secular acceleration of the Moon
 			deltaTstart	= 1620;
 			deltaTfinish	= 2013;
 			break;
 		case StephensonMorrisonHohenkerk2016:
-			deltaTnDot = -25.82; // n.dot = -25.82 "/cy/cy
+			deltaTnDot = -25.82f; // n.dot = -25.82 "/cy/cy
 			deltaTfunc=StelUtils::getDeltaTByStephensonMorrisonHohenkerk2016;
 			deltaTstart	= -720;
 			deltaTfinish	= 2015;
+			break;
+		case Henriksson2017:
+			// Henriksson solution (2017) for Schoch formula for DeltaT (1931)
+			// Source: The Acceleration of the Moon and the Universe – the Mass of the Graviton.
+			// Henriksson, G.
+			// Advances in Astrophysics, Vol. 2, No. 3, August 2017
+			// https://doi.org/10.22606/adap.2017.23004
+			deltaTnDot = -30.128f; // n.dot = -30.128"/cy/cy
+			deltaTfunc = StelUtils::getDeltaTBySchoch;
+			deltaTstart	= -4000;
+			deltaTfinish	= 2000;
 			break;
 		case Custom:
 			// User defined coefficients for quadratic equation for DeltaT. These can change, and we don't use the function pointer here.
@@ -2160,7 +2282,7 @@ void StelCore::setCurrentDeltaTAlgorithm(DeltaTAlgorithm algorithm)
 			deltaTfinish	= INT_MAX;
 			break;
 		default:
-			deltaTnDot = -26.0; // n.dot = -26.0 "/cy/cy
+			deltaTnDot = -26.0f; // n.dot = -26.0 "/cy/cy
 			deltaTfunc=Q_NULLPTR;
 			deltaTstart	= INT_MIN; // Range unknown!
 			deltaTfinish	= INT_MAX;
@@ -2267,7 +2389,7 @@ QString StelCore::getCurrentDeltaTAlgorithmDescription(void) const
 			description = q_("The fourth edition of O. Montenbruck & T. Pfleger's <em>Astronomy on the Personal Computer</em> (2000) provides simple 3rd-order polynomial data fits for the recent past.").append(getCurrentDeltaTAlgorithmValidRangeDescription(jd, &marker));
 			break;
 		case ReingoldDershowitz: //
-			description = q_("E. M. Reingold & N. Dershowitz present this polynomial data fit in <em>Calendrical Calculations</em> (3rd ed. 2007) and in their <em>Calendrical Tabulations</em> (2002). It is based on Jean Meeus' <em>Astronomical Algorithms</em> (1991).").append(getCurrentDeltaTAlgorithmValidRangeDescription(jd, &marker));
+			description = q_("E. M. Reingold & N. Dershowitz present this polynomial data fit in <em>Calendrical Calculations</em> (4th ed. 2018) and in their <em>Calendrical Tabulations</em> (2002). It is based on Jean Meeus' <em>Astronomical Algorithms</em> (1991).").append(getCurrentDeltaTAlgorithmValidRangeDescription(jd, &marker));
 			break;
 		case MorrisonStephenson2004: // PRIMARY SOURCE
 			description = q_("This important solution was published by L. V. Morrison and F. R. Stephenson in article <em>Historical values of the Earth's clock error %1T and the calculation of eclipses</em> (%2) with addendum in (%3).").arg(QChar(0x0394)).arg("<a href='http://adsabs.harvard.edu/abs/2004JHA....35..327M'>2004</a>").arg("<a href='http://adsabs.harvard.edu/abs/2005JHA....36..339M'>2005</a>").append(getCurrentDeltaTAlgorithmValidRangeDescription(jd, &marker));
@@ -2292,6 +2414,9 @@ QString StelCore::getCurrentDeltaTAlgorithmDescription(void) const
 			break;
 		case StephensonMorrisonHohenkerk2016: // PRIMARY SOURCE, SEEMS VERY IMPORTANT
 			description = q_("This solution by F. R. Stephenson, L. V. Morrison and C. Y. Hohenkerk (2016) was published in <em>Measurement of the Earth’s rotation: 720 BC to AD 2015</em> (%1). Outside of the named range (modelled with a spline fit) it provides values from an approximate parabola.").arg("<a href='https://doi.org/10.1098/rspa.2016.0404'>2016</a>").append(getCurrentDeltaTAlgorithmValidRangeDescription(jd, &marker));
+			break;
+		case Henriksson2017:
+			description = q_("This solution by G. Henriksson was published in the article <em>The Acceleration of the Moon and the Universe - the Mass of the Graviton</em> (%1) and based on C. Schoch's formula (1931).").arg("<a href='https://doi.org/10.22606/adap.2017.23004'>2017</a>").append(getCurrentDeltaTAlgorithmValidRangeDescription(jd, &marker));
 			break;
 		case Custom:
 			description = q_("This is a quadratic formula for calculation of %1T with coefficients defined by the user.").arg(QChar(0x0394));
@@ -2321,6 +2446,7 @@ QString StelCore::getCurrentDeltaTAlgorithmValidRangeDescription(const double JD
 	StelUtils::getDateFromJulianDay(JD, &year, &month, &day);
 	switch (currentDeltaTAlgorithm)
 	{
+		// These models provide extrapolated values outside their specified/recommended range.
 		case WithoutCorrection:      // and
 		case Schoch:                 // and
 		case Clemence:               // and
@@ -2342,7 +2468,8 @@ QString StelCore::getCurrentDeltaTAlgorithmValidRangeDescription(const double JD
 		case Reijs:                  // and
 		case EspenakMeeus: // the default, range stated in the Canon, p. 14.  ... and
 		case EspenakMeeusZeroMoonAccel: // and
-		case StephensonMorrisonHohenkerk2016:
+		case StephensonMorrisonHohenkerk2016: // and
+		case Henriksson2017:
 			break;
 		case JPLHorizons: // and
 		case MeeusSimons:
@@ -2373,7 +2500,7 @@ QString StelCore::getCurrentDeltaTAlgorithmValidRangeDescription(const double JD
 		else
 			validRange = q_("Valid range of usage: between years %1 and %2.").arg(deltaTstart).arg(deltaTfinish);
 		if ((year < deltaTstart) || (deltaTfinish < year))
-			*marker = "*"; // mark "outside designed range, possible wrong"
+			*marker = "*"; // mark "outside designed range, possibly wrong"
 	}
 	else
 		*marker = "?"; // mark "no range given"
@@ -2382,21 +2509,27 @@ QString StelCore::getCurrentDeltaTAlgorithmValidRangeDescription(const double JD
 }
 
 // return if sky plus atmosphere is bright enough from sunlight so that e.g. screen labels should be rendered dark.
-// TODO: Why not simply ask the atmosphere for its displayed brightness?
+// DONE: Simply ask the atmosphere for its surrounding brightness
+// TODO2: This could be moved to the SkyDrawer or even some GUI class, as it is used to decide a GUI thing.
 bool StelCore::isBrightDaylight() const
 {
 	SolarSystem* ssys = GETSTELMODULE(SolarSystem);
 	if (!ssys->getFlagPlanets())
 		return false;
-
+	if (!getSkyDrawer()->getFlagHasAtmosphere())
+		return false;
 	if (ssys->getEclipseFactor(this)<=0.01) // Total solar eclipse
 		return false;
 
-	const Vec3d& sunPos = ssys->getSun()->getAltAzPosGeometric(this);
-	if (sunPos[2] > -0.10452846326) // Nautical twilight (sin (6 deg))
-		return true;
-	else
-		return false;
+	// immediately decide upon sky background brightness...
+	return (GETSTELMODULE(LandscapeMgr)->getAtmosphereAverageLuminance() > getSkyDrawer()->getDaylightLabelThreshold());
+
+	// Old solution: based on solar altitude
+//	const Vec3d& sunPos = ssys->getSun()->getAltAzPosGeometric(this);
+//	if (sunPos[2] > -0.10452846326) // Nautical twilight (sin (6 deg))
+//		return true;
+//	else
+//		return false;
 }
 
 double StelCore::getCurrentEpoch() const
@@ -2405,7 +2538,8 @@ double StelCore::getCurrentEpoch() const
 }
 
 // DE430/DE431 handling.
-// FIXME: GZ observes: When DE431 is not available, DE430 installed, but date outside, de430IsActive() should return false because computations go back to VSOP!.
+// NOTE: When DE431 is not available, DE430 installed, but date outside, de430IsActive() may be true but computations still go back to VSOP!
+// To test whether DE43x is really currently in use, test (EphemWrapper::use_de430(jd) || EphemWrapper::use_de431(jd))
 
 bool StelCore::de430IsAvailable()
 {
@@ -2492,7 +2626,7 @@ static bool iau_constlineVecInitialized=false;
 QString StelCore::getIAUConstellation(const Vec3d positionEqJnow) const
 {
 	// Precess positionJ2000 to 1875.0
-	Vec3d pos1875=j2000ToJ1875(equinoxEquToJ2000(positionEqJnow));
+	Vec3d pos1875=j2000ToJ1875(equinoxEquToJ2000(positionEqJnow, RefractionOff));
 	double RA1875;
 	double dec1875;
 	StelUtils::rectToSphe(&RA1875, &dec1875, pos1875);
@@ -2538,7 +2672,11 @@ QString StelCore::getIAUConstellation(const Vec3d positionEqJnow) const
 			numList=list.at(1).split(QRegExp(":"));
 			span.RAhigh=atof(numList.at(0).toLatin1()) + atof(numList.at(1).toLatin1())/60. + atof(numList.at(2).toLatin1())/3600.;
 			numList=list.at(2).split(QRegExp(":"));
-			span.decLow=atof(numList.at(0).toLatin1()) + atof(numList.at(1).toLatin1())/60.;
+			span.decLow=atof(numList.at(0).toLatin1());
+			if (span.decLow<0.0)
+				span.decLow -= atof(numList.at(1).toLatin1())/60.;
+			else
+				span.decLow += atof(numList.at(1).toLatin1())/60.;
 			span.constellation=list.at(3);
 			iau_constlineVec.append(span);
 		}
@@ -2550,8 +2688,8 @@ QString StelCore::getIAUConstellation(const Vec3d positionEqJnow) const
 	int entry=0;
 	while (iau_constlineVec.at(entry).decLow > dec1875)
 		entry++;
-	while (entry<iau_constlineVec.size()){
-
+	while (entry<iau_constlineVec.size())
+	{
 		while (iau_constlineVec.at(entry).RAhigh <= RA1875)
 			entry++;
 		while (iau_constlineVec.at(entry).RAlow >= RA1875)

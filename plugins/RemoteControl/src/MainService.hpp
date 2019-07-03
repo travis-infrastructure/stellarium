@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef MAINSERVICE_HPP_
-#define MAINSERVICE_HPP_
+#ifndef MAINSERVICE_HPP
+#define MAINSERVICE_HPP
 
 #include "AbstractAPIService.hpp"
 
@@ -123,7 +123,6 @@ private:
 	QContiguousCache<PropertyCacheEntry> propCache;
 	QMutex propMutex;
 	QJsonObject getPropertyChangesSinceID(int changeId);
-
 };
 
 

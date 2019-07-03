@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
  
-#ifndef _TUINODEINT_HPP_
-#define _TUINODEINT_HPP_ 1
+#ifndef TUINODEINT_HPP
+#define TUINODEINT_HPP
 
 #include "TuiNodeEditable.hpp"
 #include <QObject>
@@ -27,6 +27,7 @@
 class TuiNodeInt : public TuiNodeEditable
 {
 	Q_OBJECT
+
 public:
 	//! Create a TuiNodeInt node.
 	//! @param text the text to be displayed for this node
@@ -57,8 +58,7 @@ private:
 	int maximum;
 	int increment;
 	bool typing;
-	
 };
 
-#endif /*_TUINODEINT_HPP_*/
+#endif /*TUINODEINT_HPP*/
 

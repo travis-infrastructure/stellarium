@@ -98,6 +98,23 @@ Vec3d StelObject::getSupergalacticPos(const StelCore *core) const
 	return core->j2000ToSupergalactic(getJ2000EquatorialPos(core));
 }
 
+// Get parallactic angle, which is the deviation between zenith angle and north angle.
+// Meeus, Astronomical Algorithms, 2nd ed. (1998), p.98.
+float StelObject::getParallacticAngle(const StelCore* core) const
+{
+	const double phi=core->getCurrentLocation().latitude*M_PI/180.0;
+	const Vec3d siderealPos=getSiderealPosApparent(core);
+	double delta, ha;
+	StelUtils::rectToSphe(&ha, &delta, siderealPos);
+	ha *= -1.0; // We must invert the orientation sense in case of sidereal positions!
+
+	// A rare condition! Object exactly in zenith, avoid undefined result.
+	if ((ha==0.0) && (delta==phi))
+		return 0.0f;
+	else
+		return atan2(sin(ha), tan(phi)*cos(delta)-sin(delta)*cos(ha));
+}
+
 // Checking position an object above mathematical horizon for current location
 bool StelObject::isAboveHorizon(const StelCore *core) const
 {
@@ -220,6 +237,25 @@ float StelObject::getVMagnitudeWithExtinction(const StelCore* core) const
 	return vMag;
 }
 
+// Format the magnitude info string for the object
+QString StelObject::getMagnitudeInfoString(const StelCore *core, const InfoStringGroup& flags, const double alt_app, const int decimals) const
+{
+	if (flags&Magnitude)
+	{
+		QString emag = "";
+		if (core->getSkyDrawer()->getFlagHasAtmosphere() && (alt_app>-2.0*M_PI/180.0)) // Don't show extincted magnitude much below horizon where model is meaningless.
+		{
+			const Extinction &extinction=core->getSkyDrawer()->getExtinction();
+			float airmass=extinction.airmass(std::cos(M_PI/2.0-alt_app), true);
+
+			emag = QString(" (%1 <b>%2</b> %3 <b>%4</b> %5)").arg(q_("reduced to"), QString::number(getVMagnitudeWithExtinction(core), 'f', decimals), q_("by"), QString::number(airmass, 'f', 2), q_("Airmasses"));
+		}
+		return QString("%1: <b>%2</b>%3<br />").arg(q_("Magnitude"), QString::number(getVMagnitude(core), 'f', decimals), emag);
+	}
+	else
+		return QString();
+}
+
 // Format the positional info string contain J2000/of date/altaz/hour angle positions for the object
 QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGroup& flags) const
 {
@@ -294,7 +330,7 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 		double dec_sidereal, ra_sidereal, ha_sidereal;
 		StelUtils::rectToSphe(&ra_sidereal,&dec_sidereal,getSiderealPosGeometric(core));
 		ra_sidereal = 2.*M_PI-ra_sidereal;
-		if (withAtmosphere && (alt_app>-3.0*M_PI/180.0)) // Don't show refracted values much below horizon where model is meaningless.
+		if (withAtmosphere && (alt_app>-2.0*M_PI/180.0)) // Don't show refracted values much below horizon where model is meaningless.
 		{
 			StelUtils::rectToSphe(&ra_sidereal,&dec_sidereal,getSiderealPosApparent(core));
 			ra_sidereal = 2.*M_PI-ra_sidereal;
@@ -310,7 +346,6 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 			{
 				firstCoordinate  = StelUtils::radToHmsStr(ra_sidereal,true);
 				secondCoordinate = StelUtils::radToDmsStr(dec_sidereal,true);
-
 			}
 		}
 		else
@@ -327,7 +362,6 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 			{
 				firstCoordinate  = StelUtils::radToHmsStr(ra_sidereal,true);
 				secondCoordinate = StelUtils::radToDmsStr(dec_sidereal,true);
-
 			}
 		}
 
@@ -340,7 +374,6 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 			res += QString("<tr><td>%1:</td><td style='text-align:right;'>%2/</td><td style='text-align:right;'>%3</td><td>%4</td></tr>").arg(HADec, firstCoordinate, secondCoordinate, apparent);
 		else
 			res += QString("%1: %2/%3 %4").arg(HADec, firstCoordinate, secondCoordinate, apparent) + "<br>";
-
 	}
 
 	if (flags&AltAzi)
@@ -354,7 +387,7 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 		az = direction*M_PI - az;
 		if (az > M_PI*2)
 			az -= M_PI*2;
-		if (withAtmosphere && (alt_app>-3.0*M_PI/180.0)) // Don't show refracted altitude much below horizon where model is meaningless.
+		if (withAtmosphere && (alt_app>-2.0*M_PI/180.0)) // Don't show refracted altitude much below horizon where model is meaningless.
 		{
 			if (withDecimalDegree)
 			{
@@ -458,7 +491,7 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 
 	if (flags&EclipticCoordJ2000)
 	{
-		double eclJ2000=GETSTELMODULE(SolarSystem)->getEarth()->getRotObliquity(2451545.0);
+		const double eclJ2000=GETSTELMODULE(SolarSystem)->getEarth()->getRotObliquity(2451545.0);
 		double ra_equ, dec_equ, lambda, beta;
 		StelUtils::rectToSphe(&ra_equ,&dec_equ,getJ2000EquatorialPos(core));
 		StelUtils::equToEcl(ra_equ, dec_equ, eclJ2000, &lambda, &beta);
@@ -482,7 +515,7 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 
 	if ((flags&EclipticCoordOfDate) && (QString("Earth Sun").contains(currentPlanet)))
 	{
-		double jde=core->getJDE();
+		const double jde=core->getJDE();
 		double eclJDE = GETSTELMODULE(SolarSystem)->getEarth()->getRotObliquity(jde);
 		if (StelApp::getInstance().getCore()->getUseNutation())
 		{
@@ -530,18 +563,14 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 	if (withTables)
 		 res += "</table>";
 
-	if ((flags&SiderealTime) && (currentPlanet=="Earth"))
+	if ((flags&SiderealTime) && (currentPlanet==QStringLiteral("Earth")))
 	{
-		bool tblEnd = true;
-		double longitude=core->getCurrentLocation().longitude;
+		const double longitude=core->getCurrentLocation().longitude;
 		double sidereal=(get_mean_sidereal_time(core->getJD(), core->getJDE())  + longitude) / 15.;
 		sidereal=fmod(sidereal, 24.);
 		if (sidereal < 0.) sidereal+=24.;
 		QString STc = q_("Mean Sidereal Time");
 		QString STd = StelUtils::hoursToHmsStr(sidereal);
-
-		if (flags&RTSTime && withTables && getType()!=QStringLiteral("Satellite"))
-			tblEnd = false;
 
 		if (withTables)
 		{
@@ -563,14 +592,14 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 			else
 				res += QString("%1: %2").arg(STc, STd) + "<br>";
 		}
-		if (withTables && tblEnd)
+		if (withTables && !(flags&RTSTime && getType()!=QStringLiteral("Satellite")))
 			res += "</table>";
 	}
 
 	if (flags&RTSTime && getType()!=QStringLiteral("Satellite"))
 	{
 		Vec3f rts = getRTSTime(StelApp::getInstance().getCore()); // required not const StelCore!
-		QString sTransit = qc_("Transit", "celestial event");
+		QString sTransit = qc_("Transit", "celestial event; passage across a meridian");
 		QString sRise = qc_("Rise", "celestial event");
 		QString sSet = qc_("Set", "celestial event");
 		float sunrise = 0.f;
@@ -579,7 +608,7 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 		if (getEnglishName()=="Sun")
 			isSun = true;
 
-		if (withTables && currentPlanet!="Earth")
+		if (withTables && !(flags&SiderealTime && currentPlanet==QStringLiteral("Earth")))
 			res += "<table style='margin:0em 0em 0em -0.125em;border-spacing:0px;border:0px;'>";
 
 		if (rts[0]>-99.f && rts[0]<100.f)
@@ -640,6 +669,18 @@ QString StelObject::getCommonInfoString(const StelCore *core, const InfoStringGr
 			res += q_("Polar dusk") + "<br />";
 	}
 
+	if (flags&Extra && getType()!=QStringLiteral("Star"))
+	{
+		QString pa;
+		const float par = getParallacticAngle(core);
+		if (withDecimalDegree)
+			pa = StelUtils::radToDecDegStr(par);
+		else
+			pa = StelUtils::radToDmsStr(par, true);
+
+		res += QString("%1: %2").arg(q_("Parallactic Angle")).arg(pa) + "<br />";
+	}
+
 	if (flags&IAUConstellation)
 	{
 		QString constel=core->getIAUConstellation(getEquinoxEquatorialPos(core));
@@ -675,7 +716,7 @@ void StelObject::postProcessInfoString(QString& str, const InfoStringGroup& flag
 	{
 		Vec3f color = getInfoColor();
 		StelCore* core = StelApp::getInstance().getCore();
-		if (core->isBrightDaylight() && core->getSkyDrawer()->getFlagHasAtmosphere()==true && !StelApp::getInstance().getVisionModeNight())
+		if (core->isBrightDaylight() && !StelApp::getInstance().getVisionModeNight())
 		{
 			// make info text more readable when atmosphere enabled at daylight.
 			color = StelUtils::strToVec3f(StelApp::getInstance().getSettings()->value("color/daylight_text_color", "0.0,0.0,0.0").toString());
@@ -700,6 +741,30 @@ QVariantMap StelObject::getInfoMap(const StelCore *core) const
 	map.insert("ra", ra*180./M_PI);
 	map.insert("dec", dec*180./M_PI);
 
+	if (getType()!=QStringLiteral("Star"))
+		map.insert("parallacticAngle", getParallacticAngle(core)*180.0/M_PI);
+
+	// Sidereal Time and hour angle
+	if (core->getCurrentLocation().planetName=="Earth")
+	{
+		const double longitude=core->getCurrentLocation().longitude;
+		double sidereal=(get_mean_sidereal_time(core->getJD(), core->getJDE())  + longitude) / 15.;
+		sidereal=fmod(sidereal, 24.);
+		if (sidereal < 0.) sidereal+=24.;
+		map.insert("meanSidTm", StelUtils::hoursToHmsStr(sidereal));
+
+		sidereal=(get_apparent_sidereal_time(core->getJD(), core->getJDE()) + longitude) / 15.;
+		sidereal=fmod(sidereal, 24.);
+		if (sidereal < 0.) sidereal+=24.;
+		map.insert("appSidTm", StelUtils::hoursToHmsStr(sidereal));
+
+		double ha = sidereal * 15.0 - ra * 180.0/M_PI;
+		ha=fmod(ha, 360.0);
+		if (ha < 0.) ha+=360.0;
+		map.insert("hourAngle-dd", ha);
+		map.insert("hourAngle-hms", StelUtils::hoursToHmsStr(ha/15.0));
+	}
+
 	// ra/dec in J2000
 	pos = getJ2000EquatorialPos(core);
 	StelUtils::rectToSphe(&ra, &dec, pos);
@@ -718,6 +783,9 @@ QVariantMap StelObject::getInfoMap(const StelCore *core) const
 
 	map.insert("altitude", alt*180./M_PI);
 	map.insert("azimuth", az*180./M_PI);
+
+	const Extinction &extinction=core->getSkyDrawer()->getExtinction();
+	map.insert("airmass", extinction.airmass(cos(M_PI/2.0-alt), true));
 
 	// geometric altitude/azimuth
 	pos = getAltAzPosGeometric(core);

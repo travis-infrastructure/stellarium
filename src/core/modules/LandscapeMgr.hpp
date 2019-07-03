@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _LANDSCAPEMGR_HPP_
-#define _LANDSCAPEMGR_HPP_
+#ifndef LANDSCAPEMGR_HPP
+#define LANDSCAPEMGR_HPP
 
 #include "StelModule.hpp"
 #include "StelUtils.hpp"
@@ -80,7 +80,7 @@ class LandscapeMgr : public StelModule
 		   READ getFlagLabels
 		   WRITE setFlagLabels
 		   NOTIFY labelsDisplayedChanged)
-	Q_PROPERTY(bool flagUseLightPollutionFromDatabase // was databaseUsage
+	Q_PROPERTY(bool flagUseLightPollutionFromDatabase
 		   READ getFlagUseLightPollutionFromDatabase
 		   WRITE setFlagUseLightPollutionFromDatabase
 		   NOTIFY flagUseLightPollutionFromDatabaseChanged)
@@ -104,10 +104,10 @@ class LandscapeMgr : public StelModule
 		   READ getDefaultMinimalBrightness
 		   WRITE setDefaultMinimalBrightness
 		   NOTIFY defaultMinimalBrightnessChanged)
-	Q_PROPERTY(bool flagAtmosphereAutoEnabling
-		   READ getFlagAtmosphereAutoEnable
-		   WRITE setFlagAtmosphereAutoEnable
-		   NOTIFY setFlagAtmosphereAutoEnableChanged)
+	Q_PROPERTY(bool flagEnvironmentAutoEnabling
+		   READ getFlagEnvironmentAutoEnable
+		   WRITE setFlagEnvironmentAutoEnable
+		   NOTIFY setFlagEnvironmentAutoEnableChanged)
 	Q_PROPERTY(QString currentLandscapeID
 		   READ getCurrentLandscapeID
 		   WRITE setCurrentLandscapeID
@@ -194,7 +194,7 @@ public slots:
 	void setAtmosphereAverageLuminance(const float overrideLuminance);
 
 	//! Return a map of landscape names to landscape IDs (directory names).
-	QMap<QString,QString> getNameToDirMap() const;
+	static QMap<QString,QString> getNameToDirMap();
 
 	//! Retrieve a list of the names of all the available landscapes in
 	//! the file search path sub-directories of the landscape area
@@ -247,7 +247,7 @@ public slots:
 	//! A big landscape may well take 150MB or more.
 	//! On a 32bit system, keep this rather small. On 64bit with 16GB RAM and no other tasks, 4GB is no problem.
 	//! Modern GPUs may have 4 or even 8GB of dedicated texture memory. Most of this may be filled with landscape textures.
-	//! Example: a museum installation with 20 large (16384x2048) old_stype landscapes can require up to 3.5GB. Allow 4GB cache,
+	//! Example: a museum installation with 20 large (16384x2048) old_style landscapes can require up to 3.5GB. Allow 4GB cache,
 	//! and the system will never have to load a landscape during the show when all have been preloaded.
 	void setCacheSize(int mb) { landscapeCache.setMaxCost(mb);}
 	//! Retrieve total size of cache (MB).
@@ -334,7 +334,7 @@ public slots:
 	void setFlagAtmosphere(const bool displayed);
 
 	//! Get current display intensity of atmosphere ([0..1], for smoother transitions)
-	float getAtmosphereFadeIntensity();
+	float getAtmosphereFadeIntensity() const;
 
 	//! Get atmosphere fade duration in s.
 	float getAtmosphereFadeDuration() const;
@@ -434,10 +434,10 @@ public slots:
 	//! Set flag for autoselect of landscapes for planets.
 	void setFlagLandscapeAutoSelection(bool enableAutoSelect);
 
-	//! Get flag for auto-enable of atmospheres for planets.
-	bool getFlagAtmosphereAutoEnable() const;
-	//! Set flag for auto-enable atmosphere for planets with atmospheres in location window
-	void setFlagAtmosphereAutoEnable(bool b);
+	//! Get flag for auto-enable of atmospheres and landscapes for planets.
+	bool getFlagEnvironmentAutoEnable() const;
+	//! Set flag for auto-enable atmosphere and landscape for planets with atmospheres in location window
+	void setFlagEnvironmentAutoEnable(bool b);
 
 	//! Forward opacity query to current landscape.
 	//! @param azalt direction of view line to sample in azaltimuth coordinates.
@@ -467,7 +467,7 @@ signals:
 	void flagLandscapeUseMinimalBrightnessChanged(const bool value);
 	void flagLandscapeSetsMinimalBrightnessChanged(const bool value);
 	void defaultMinimalBrightnessChanged(const double value);
-	void setFlagAtmosphereAutoEnableChanged(const bool enabled);
+	void setFlagEnvironmentAutoEnableChanged(const bool enabled);
 
 	//! Emitted whenever the default landscape is changed
 	//! @param id the landscape id of the new default landscape
@@ -509,8 +509,8 @@ private slots:
 	void setAtmosphereBortleLightPollution(const int bIndex);
 
 	//! Reacts to StelCore::locationChanged.
-	void onLocationChanged(StelLocation loc);
-	void onTargetLocationChanged(StelLocation loc);
+	void onLocationChanged(const StelLocation &loc);
+	void onTargetLocationChanged(const StelLocation &loc);
 
 	//! Translate labels to new language settings.
 	void updateI18n();
@@ -529,13 +529,13 @@ private:
 	//! For a given landscape name, return the landscape ID.
 	//! This takes a name of the landscape, as described in the landscape:name item in the
 	//! landscape.ini, and returns the landscape ID which corresponds to that name.
-	QString nameToID(const QString& name) const;
+	static QString nameToID(const QString& name);
 
 	//! Returns the path to an installed landscape's directory.
 	//! It uses StelFileMgr to look for it in the possible directories.
 	//! @param landscapeID an installed landscape's identifier (the folder name)
 	//! @returns an empty string, if no such landscape was found.
-	QString getLandscapePath(const QString landscapeID) const;
+	static QString getLandscapePath(const QString landscapeID);
 
 	Atmosphere* atmosphere;			// Atmosphere
 	Cardinals* cardinalsPoints;		// Cardinals points
@@ -555,8 +555,8 @@ private:
 	double defaultMinimalBrightness;
 	//! Indicate use of the minimal brightness value specified in the current landscape.ini, if present.
 	bool flagLandscapeSetsMinimalBrightness;
-	//! Indicate auto-enable atmosphere for planets with atmospheres in location window
-	bool flagAtmosphereAutoEnabling;
+	//! Indicate auto-enable atmosphere and landscape for planets with atmospheres in location window
+	bool flagEnvironmentAutoEnabling;
 
 	//! The ID of the currently loaded landscape
 	QString currentLandscapeID;
@@ -581,4 +581,4 @@ private:
 	QString currentPlanetName;
 };
 
-#endif // _LANDSCAPEMGR_HPP_
+#endif // LANDSCAPEMGR_HPP

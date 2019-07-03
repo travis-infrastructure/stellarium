@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELFILEMGR_HPP_
-#define _STELFILEMGR_HPP_
+#ifndef STELFILEMGR_HPP
+#define STELFILEMGR_HPP
 
 #define CHECK_FILE "data/ssystem_major.ini"
 
@@ -195,7 +195,6 @@ public:
 	static QString getLocaleDir();
 
 private:
-
 	//! No one can create an instance.
 	StelFileMgr() {;}
 
@@ -222,7 +221,6 @@ private:
 	//! @param csidlId identifier for directoy, e.g. CSIDL_APPDATA
 	static QString getWin32SpecialDirPath(int csidlId);
 #endif
-
 };
 
-#endif // _STELFILEMGR_HPP_
+#endif // STELFILEMGR_HPP

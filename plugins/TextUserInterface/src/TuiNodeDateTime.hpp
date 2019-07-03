@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
  
-#ifndef _TUINODEDATETIME_HPP_
-#define _TUINODEDATETIME_HPP_ 1
+#ifndef TUINODEDATETIME_HPP
+#define TUINODEDATETIME_HPP
 
 #include "TuiNodeEditable.hpp"
 #include <QObject>
@@ -30,6 +30,7 @@
 class TuiNodeDateTime : public TuiNodeEditable
 {
 	Q_OBJECT
+
 public:
 	//! Create a TuiNodeDateTime node.
 	//! @param text the text to be displayed for this node
@@ -53,8 +54,7 @@ private:
 	void incPart(int part, bool add);
 	QList<int> getParts(double jd) const;
 	bool setPart(int part, int val);
-
 };
 
-#endif /*_TUINODEDATETIME_HPP_*/
+#endif /*TUINODEDATETIME_HPP*/
 

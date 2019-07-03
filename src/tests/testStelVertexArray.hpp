@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _TESTSTELVERTEXARRAY_HPP_
-#define _TESTSTELVERTEXARRAY_HPP_
+#ifndef TESTSTELVERTEXARRAY_HPP
+#define TESTSTELVERTEXARRAY_HPP
 
 #include <QObject>
 #include <QTest>
@@ -34,7 +34,7 @@ private slots:
 	void benchmarkForeachTriangle();
 	void benchmarkForeachTriangleDirect();
 private:
-	StelVertexArray array;
+	StelVertexArray arrayTriangleStrip, arrayTriangleFan;
 };
 
-#endif // _TESTSTELVERTEXARRAY_HPP_
+#endif // _TESTSTELVERTEXARRAY_HPP

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _TESTSTELFILEMGR_HPP_
-#define _TESTSTELFILEMGR_HPP_
+#ifndef TESTSTELFILEMGR_HPP
+#define TESTSTELFILEMGR_HPP
 
 #include <QObject>
 #include <QString>
@@ -33,7 +33,6 @@ class TestStelFileMgr : public QObject
 Q_OBJECT
 private slots:
 	void initTestCase();
-
 	void testFindFileVanilla();
 	void testFindFileVanillaAbs();
 	void testFindFileFile();
@@ -58,5 +57,5 @@ private:
 	QStringList testFiles;
 };
 
-#endif // _TESTSTELFILEMGR_HPP_
+#endif // _TESTSTELFILEMGR_HPP
 

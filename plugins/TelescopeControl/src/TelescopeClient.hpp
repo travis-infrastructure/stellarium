@@ -23,8 +23,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _TELESCOPE_HPP_
-#define _TELESCOPE_HPP_
+#ifndef TELESCOPECLIENT_HPP
+#define TELESCOPECLIENT_HPP
 
 #include <QHostAddress>
 #include <QHostInfo>
@@ -95,7 +95,7 @@ public:
 	virtual bool prepareCommunication() {return false;}
 	virtual void performCommunication() {}
 
-	virtual QWidget* createControlWidget(QSharedPointer<TelescopeClient> telescope, QWidget* parent = nullptr) const { return nullptr; }
+	virtual QWidget* createControlWidget(QSharedPointer<TelescopeClient> telescope, QWidget* parent = Q_NULLPTR) const { Q_UNUSED(telescope) Q_UNUSED(parent) return Q_NULLPTR; }
 
 protected:
 	TelescopeClient(const QString &name);
@@ -147,6 +147,7 @@ public:
 	}
 	void telescopeGoto(const Vec3d &j2000Pos, StelObjectP selectObject)
 	{
+		Q_UNUSED(selectObject)
 		desired_pos = j2000Pos;
 		desired_pos.normalize();
 	}
@@ -222,4 +223,4 @@ private slots:
 	void socketFailed(QAbstractSocket::SocketError socketError);
 };
 
-#endif // _TELESCOPE_HPP_
+#endif // TELESCOPECLIENT_HPP

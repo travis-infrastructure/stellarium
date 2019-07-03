@@ -10,8 +10,8 @@
 // as published by the Free Software Foundation; either version 2
 // of the License, or (at your option) any later version.
 
-#ifndef _ORBIT_HPP_
-#define _ORBIT_HPP_
+#ifndef ORBIT_HPP
+#define ORBIT_HPP
 
 #include "VecMath.hpp"
 
@@ -102,6 +102,7 @@ public:
 	double getSemimajorAxis() const { return (e==1. ? 0. : q / (1.-e)); }
 	double getEccentricity() const { return e; }
 	bool objectDateValid(const double JDE) const { return (fabs(t0-JDE)<orbitGood); }
+
 private:
 	const double q;  //! perihel distance
 	const double e;  //! eccentricity
@@ -153,4 +154,4 @@ private:
 
 */
 
-#endif // _ORBIT_HPP_
+#endif // ORBIT_HPP

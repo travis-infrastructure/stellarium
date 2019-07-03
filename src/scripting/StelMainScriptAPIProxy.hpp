@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELMAINSCRIPTAPIPROXY_HPP_
-#define _STELMAINSCRIPTAPIPROXY_HPP_
+#ifndef STELMAINSCRIPTAPIPROXY_HPP
+#define STELMAINSCRIPTAPIPROXY_HPP
 
 #include <QObject>
 
@@ -49,8 +49,7 @@ public:
 
 public slots:
 	void setDiskViewport(bool b);
-
 };
 
-#endif // _STELMAINSCRIPTAPIPROXY_HPP_
+#endif // STELMAINSCRIPTAPIPROXY_HPP
 

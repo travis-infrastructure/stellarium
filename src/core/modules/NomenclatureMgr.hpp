@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _NOMENCLATUREMGR_HPP_
-#define _NOMENCLATUREMGR_HPP_
+#ifndef NOMENCLATUREMGR_HPP
+#define NOMENCLATUREMGR_HPP
 
 #include "StelObjectModule.hpp"
 #include "StelObject.hpp"
@@ -63,20 +63,20 @@ public:
 	virtual double getCallOrder(StelModuleActionName actionName) const;
 
 	///////////////////////////////////////////////////////////////////////////
-	// Methods defined in StelObjectManager class
+	// Methods defined in StelObjectModule class
 	//! Used to get a list of objects which are near to some position.
-	//! @param v a vector representing the position in th sky around which to search for nebulae.
-	//! @param limitFov the field of view around the position v in which to search for satellites.
+	//! @param v a vector representing the position in th sky around which to search for nomenclatures.
+	//! @param limitFov the field of view around the position v in which to search for nomenclatures.
 	//! @param core the StelCore to use for computations.
-	//! @return an list containing the satellites located inside the limitFov circle around position v.
+	//! @return a list containing the NomenclatureItems located inside the limitFov circle around position v.
 	virtual QList<StelObjectP> searchAround(const Vec3d& v, double limitFov, const StelCore* core) const;
 
 	//! Return the matching satellite object's pointer if exists or Q_NULLPTR.
-	//! @param nameI18n The case in-sensistive satellite name
+	//! @param nameI18n The case in-sensitive localized NomenclatureItem name
 	virtual StelObjectP searchByNameI18n(const QString& nameI18n) const;
 
 	//! Return the matching satellite if exists or Q_NULLPTR.
-	//! @param name The case in-sensistive standard program name
+	//! @param name The case in-sensitive english NomenclatureItem name
 	virtual StelObjectP searchByName(const QString& name) const;
 
 	virtual StelObjectP searchByID(const QString &id) const { return qSharedPointerCast<StelObject>(searchByEnglishName(id)); }
@@ -130,6 +130,10 @@ signals:
 	void localNomenclatureHidingChanged(bool b);
 	void nomenclatureColorChanged(const Vec3f & color) const;
 
+private slots:
+	//! Connect from StelApp to reflect font size change.
+	void setFontSize(int size){font.setPixelSize(size);}
+
 private:
 	SolarSystem* ssystem;
 
@@ -143,4 +147,4 @@ private:
 	QMultiHash<PlanetP, NomenclatureItemP> nomenclatureItems;
 };
 
-#endif /*_NOMENCLATUREMGR_HPP_*/
+#endif /* NOMENCLATUREMGR_HPP */

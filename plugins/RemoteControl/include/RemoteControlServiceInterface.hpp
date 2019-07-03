@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef REMOTECONTROLSERVICEINTERFACE_HPP_
-#define REMOTECONTROLSERVICEINTERFACE_HPP_
+#ifndef REMOTECONTROLSERVICEINTERFACE_HPP
+#define REMOTECONTROLSERVICEINTERFACE_HPP
 
 #include <QByteArray>
 #include <QDebug>
@@ -39,7 +39,6 @@ public:
 	//! Constructs an invalid response
 	APIServiceResponse() : status(-1)
 	{
-
 	}
 
 	//! Sets a specific HTTP header to the specified value
@@ -154,7 +153,6 @@ public:
 	}
 
 private:
-
 	int status;
 	QByteArray statusText;
 	QMap<QByteArray,QByteArray> headers;

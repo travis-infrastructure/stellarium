@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
 */
  
-#ifndef _SCRIPTCONSOLE_HPP_
-#define _SCRIPTCONSOLE_HPP_
+#ifndef SCRIPTCONSOLE_HPP
+#define SCRIPTCONSOLE_HPP
 
 #include <QObject>
 #include "StelDialog.hpp"
@@ -37,6 +37,7 @@ public:
 
 public slots:
 	void retranslate();
+
 private slots:
 	void runScript();
 	void loadScript();
@@ -58,9 +59,8 @@ protected:
 	virtual void createDialogContent();
 
 private:
-	QString getFileMask();
+	static const QString getFileMask();
 	StelScriptSyntaxHighlighter* highlighter;
-
 };
 
-#endif // _SCRIPTCONSOLE_HPP_
+#endif // _SCRIPTCONSOLE_HPP

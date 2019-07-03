@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
  
-#ifndef _TUINODEFLOAT_HPP_
-#define _TUINODEFLOAT_HPP_ 1
+#ifndef TUINODEFLOAT_HPP
+#define TUINODEFLOAT_HPP
 
 #include "TuiNodeEditable.hpp"
 #include <QObject>
@@ -29,6 +29,7 @@
 class TuiNodeFloat : public TuiNodeEditable
 {
 	Q_OBJECT
+
 public:
 	//! Create a TuiNodeFloat node.
 	//! @param text the text to be displayed for this node
@@ -60,8 +61,7 @@ private:
 	float increment;
 	bool typing;
 	bool typedDecimal;
-	
 };
 
-#endif /*_TUINODEFLOAT_HPP_*/
+#endif /*TUINODEFLOAT_HPP*/
 

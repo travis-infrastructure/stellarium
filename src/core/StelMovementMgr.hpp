@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELMOVEMENTMGR_HPP_
-#define _STELMOVEMENTMGR_HPP_
+#ifndef STELMOVEMENTMGR_HPP
+#define STELMOVEMENTMGR_HPP
 
 #include "StelModule.hpp"
 #include "StelProjector.hpp"
@@ -33,6 +33,8 @@
 class StelMovementMgr : public StelModule
 {
 	Q_OBJECT
+	Q_ENUMS(MountMode)
+	Q_ENUMS(ZoomingMode)
 	Q_PROPERTY(bool equatorialMount
 		   READ getEquatorialMount
 		   WRITE setEquatorialMount
@@ -45,7 +47,6 @@ class StelMovementMgr : public StelModule
 		   READ getFlagIndicationMountMode
 		   WRITE setFlagIndicationMountMode
 		   NOTIFY flagIndicationMountModeChanged)
-
 	//The targets of viewport offset animation
 	Q_PROPERTY(float viewportHorizontalOffsetTarget
 		   READ getViewportHorizontalOffsetTarget
@@ -55,18 +56,15 @@ class StelMovementMgr : public StelModule
 		   READ getViewportVerticalOffsetTarget
 		   WRITE setViewportVerticalOffsetTarget
 		   NOTIFY viewportVerticalOffsetTargetChanged)
-
 	Q_PROPERTY(bool flagAutoZoomOutResetsDirection
 		   READ getFlagAutoZoomOutResetsDirection
 		   WRITE setFlagAutoZoomOutResetsDirection
 		   NOTIFY flagAutoZoomOutResetsDirectionChanged)
-
 	Q_PROPERTY(bool flagEnableMouseNavigation
 		   READ getFlagEnableMouseNavigation
 		   WRITE setFlagEnableMouseNavigation
 		   NOTIFY flagEnableMouseNavigationChanged)
 public:
-
 	//! Possible mount modes defining the reference frame in which head movements occur.
 	//! MountGalactic and MountSupergalactic is currently only available via scripting API: core.clear("galactic") and core.clear("supergalactic")
 	// TODO: add others: MountEcliptical, MountEq2000, MountEcliptical2000 and implement proper variants.
@@ -119,7 +117,7 @@ public:
 
 	//! Get the zoom speed
 	// TODO: what are the units?
-	double getZoomSpeed() {return keyZoomSpeed;}
+	double getZoomSpeed() const {return keyZoomSpeed;}
 
 	//! Return the current up view vector in J2000 coordinates.
 	Vec3d getViewUpVectorJ2000() const;
@@ -135,6 +133,7 @@ public:
 	void setDragTriggerDistance(float d) {dragTriggerDistance=d;}
 
 public slots:
+	// UNUSED!
 	//! Toggle current mount mode between equatorial and altazimuthal
 	void toggleMountMode() {if (getMountMode()==MountAltAzimuthal) setMountMode(MountEquinoxEquatorial); else setMountMode(MountAltAzimuthal);}
 	//! Define whether we should use equatorial mount or altazimuthal
@@ -166,7 +165,7 @@ public slots:
 	//! Set whether auto zoom out will reset the viewing direction to the inital value
 	void setFlagAutoZoomOutResetsDirection(bool b) {if (flagAutoZoomOutResetsDirection != b) { flagAutoZoomOutResetsDirection = b; emit flagAutoZoomOutResetsDirectionChanged(b);}}
 	//! Get whether auto zoom out will reset the viewing direction to the inital value
-	bool getFlagAutoZoomOutResetsDirection(void) {return flagAutoZoomOutResetsDirection;}
+	bool getFlagAutoZoomOutResetsDirection(void) const {return flagAutoZoomOutResetsDirection;}
 
 	//! Get whether keys can control zoom
 	bool getFlagEnableZoomKeys() const {return flagEnableZoomKeys;}
@@ -230,10 +229,10 @@ public slots:
 	//! Return the initial default FOV in degree.
 	double getInitFov() const {return initFov;}
 	//! Set the initial Field Of View in degree.
-	void setInitFov(double fov) {initFov=fov;}
+	void setInitFov(double fov);
 
 	//! Return the inital viewing direction in altazimuthal coordinates
-	const Vec3d getInitViewingDirection() {return initViewPos;}
+	const Vec3d getInitViewingDirection() const {return initViewPos;}
 	//! Sets the initial direction of view to the current altitude and azimuth.
 	//! Note: Updates the configuration file.
 	void setInitViewDirectionToCurrent();
@@ -289,10 +288,12 @@ public slots:
 	//! Look immediately towards South Celestial pole.
 	void lookTowardsSCP(void);
 
-	//! start animated move of the viewport offset.
-	//! @param offsetX new horizontal viewport offset, percent. clamped to [-50...50]
-	//! @param offsetY new horizontal viewport offset, percent. clamped to [-50...50]
-	//! @param duration animation duration, seconds.
+	//! set or start animated move of the viewport offset.
+	//! This can be used e.g. in wide cylindrical panorama screens to push the horizon down and see more of the sky.
+	//! Also helpful in stereographic projection to push the horizon down and see more of the sky.
+	//! @param offsetX new horizontal viewport offset, percent. clamped to [-50...50]. Probably not very useful.
+	//! @param offsetY new horizontal viewport offset, percent. clamped to [-50...50]. This is also available in the GUI.
+	//! @param duration animation duration, seconds. Optional.
 	//! @note Only vertical viewport is really meaningful.
 	void moveViewport(float offsetX, float offsetY, const float duration=0.f);
 
@@ -479,8 +480,7 @@ private:
 	//@{
 	int lastMessageID;
 	//@}
-
 };
 
-#endif // _STELMOVEMENTMGR_HPP_
+#endif // STELMOVEMENTMGR_HPP
 

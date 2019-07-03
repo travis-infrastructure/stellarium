@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STOREDVIEWDIALOG_P_HPP_
-#define _STOREDVIEWDIALOG_P_HPP_
+#ifndef STOREDVIEWDIALOG_P_HPP
+#define STOREDVIEWDIALOG_P_HPP
 
 #include "SceneInfo.hpp"
 
@@ -124,8 +124,7 @@ public:
 		}
 	}
 
-
-	QModelIndex addUserView(StoredView v)
+	QModelIndex addUserView(const StoredView& v)
 	{
 		int idx = global.size() + user.size();
 		beginInsertRows(QModelIndex(),idx,idx);

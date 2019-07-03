@@ -23,6 +23,7 @@
 
 #include "StelUtils.hpp"
 #include "VecMath.hpp"
+#include "StelLocaleMgr.hpp"
 #include <QBuffer>
 #include <QString>
 #include <QStringList>
@@ -59,128 +60,23 @@ QString getApplicationVersion()
 QString getUserAgentString()
 {
 	// Get info about operating system
-	QString platform = StelUtils::getOperatingSystemInfo();
-	if (platform.contains("Linux"))
-		platform = "Linux";
-	else if (platform.contains("FreeBSD"))
-		platform = "FreeBSD";
-	else if (platform.contains("NetBSD"))
-		platform = "NetBSD";
-	else if (platform.contains("OpenBSD"))
-		platform = "OpenBSD";
+	QString os = StelUtils::getOperatingSystemInfo();
+	if (os.contains("FreeBSD"))
+		os = "FreeBSD";
+	else if (os.contains("NetBSD"))
+		os = "NetBSD";
+	else if (os.contains("OpenBSD"))
+		os = "OpenBSD";
 
-	// Set user agent as "Stellarium/$version$ ($platform$; $CPU architecture$)"
-	platform.append("; " + QSysInfo::currentCpuArchitecture());
-
-	return QString("Stellarium/%1 (%2)").arg(StelUtils::getApplicationVersion()).arg(platform);
+	// Set user agent as "Stellarium/$version$ ($operating system$; $CPU architecture$)"
+	return QString("Stellarium/%1 (%2; %3)").arg(StelUtils::getApplicationVersion(), os, QSysInfo::currentCpuArchitecture());
 }
 
 QString getOperatingSystemInfo()
 {
 	QString OS = "Unknown operating system";
 
-	#ifdef Q_OS_WIN
-	switch(QSysInfo::WindowsVersion)
-	{
-		case QSysInfo::WV_95:
-			OS = "Windows 95";
-			break;
-		case QSysInfo::WV_98:
-			OS = "Windows 98";
-			break;
-		case QSysInfo::WV_Me:
-			OS = "Windows Me";
-			break;
-		case QSysInfo::WV_NT:
-			OS = "Windows NT";
-			break;
-		case QSysInfo::WV_2000:
-			OS = "Windows 2000";
-			break;
-		case QSysInfo::WV_XP:
-			OS = "Windows XP";
-			break;
-		case QSysInfo::WV_2003:
-			OS = "Windows Server 2003";
-			break;
-		case QSysInfo::WV_VISTA:
-			OS = "Windows Vista";
-			break;
-		case QSysInfo::WV_WINDOWS7:
-			OS = "Windows 7";
-			break;
-		case QSysInfo::WV_WINDOWS8:
-			OS = "Windows 8";
-			break;
-		case QSysInfo::WV_WINDOWS8_1:
-			OS = "Windows 8.1";
-			break;
-		#if QT_VERSION >= 0x050500
-		case QSysInfo::WV_WINDOWS10:
-			OS = "Windows 10";
-			break;
-		#endif
-		default:
-			OS = "Unsupported Windows version";
-			break;
-	}
-
-	// somebody writing something useful for Macs would be great here
-	#elif defined Q_OS_MAC
-	switch(QSysInfo::MacintoshVersion)
-	{
-		case QSysInfo::MV_PANTHER:
-			OS = "Mac OS X 10.3 series";
-			break;
-		case QSysInfo::MV_TIGER:
-			OS = "Mac OS X 10.4 series";
-			break;
-		case QSysInfo::MV_LEOPARD:
-			OS = "Mac OS X 10.5 series";
-			break;
-		case QSysInfo::MV_SNOWLEOPARD:
-			OS = "Mac OS X 10.6 series";
-			break;
-		case QSysInfo::MV_LION:
-			OS = "Mac OS X 10.7 series";
-			break;
-		case QSysInfo::MV_MOUNTAINLION:
-			OS = "Mac OS X 10.8 series";
-			break;
-		case QSysInfo::MV_MAVERICKS:
-			OS = "Mac OS X 10.9 series";
-			break;
-		case QSysInfo::MV_YOSEMITE:
-			OS = "Mac OS X 10.10 series";
-			break;
-		#if QT_VERSION >= 0x050500
-		case QSysInfo::MV_ELCAPITAN:
-			OS = "Mac OS X 10.11 series";
-			break;
-		#endif
-		#if QT_VERSION >= 0x050600
-		case QSysInfo::MV_SIERRA:
-			OS = "Mac OS X 10.12 series";
-			break;
-		#endif
-		default:
-			OS = "Unsupported Mac version";
-			break;
-	}
-
-	#elif defined Q_OS_LINUX
-	QFile procVersion("/proc/version");
-	if(!procVersion.open(QIODevice::ReadOnly | QIODevice::Text))
-		OS = "Unknown Linux version";
-	else
-	{
-		QString version = procVersion.readAll();
-		if(version.right(1) == "\n")
-			version.chop(1);
-		OS = version;
-		procVersion.close();
-	}
-	#elif defined Q_OS_BSD4
+	#ifdef Q_OS_BSD4
 	// Check FreeBSD, NetBSD, OpenBSD and DragonFly BSD
 	QProcess uname;
 	uname.start("/usr/bin/uname -srm");
@@ -188,6 +84,8 @@ QString getOperatingSystemInfo()
 	uname.waitForFinished();
 	const QString BSDsystem = uname.readAllStandardOutput();
 	OS = BSDsystem.trimmed();
+	#else
+	OS = QSysInfo::prettyProductName();
 	#endif
 
 	return OS;
@@ -201,14 +99,14 @@ double hmsToRad(const unsigned int h, const unsigned int m, const double s )
 
 double hmsToHours(const int h, const int m, const double s)
 {
-	return (double)h+(double)m/60.+(double)s*3600.;
+	return (double)h+(double)m/60.+(double)s/3600.;
 }
 
 double hmsStrToHours(const QString& s)
 {
 	QRegExp reg("(\\d+)h(\\d+)m(\\d+)s");
 	if (!reg.exactMatch(s))
-		return 0;
+		return 0.;
 	QStringList list = reg.capturedTexts();
 	int hrs = list[1].toInt();
 	int min = list[2].toInt();
@@ -219,9 +117,10 @@ double hmsStrToHours(const QString& s)
 
 double dmsToRad(const int d, const unsigned int m, const double s)
 {
-	if (d>=0)
-		return (double)M_PI/180.*d+(double)M_PI/10800.*m+s*M_PI/648000.;
-	return (double)M_PI/180.*d-(double)M_PI/10800.*m-s*M_PI/648000.;
+	double rad = (double)M_PI/180.*qAbs(d)+(double)M_PI/10800.*m+s*M_PI/648000.;
+	if (d<0)
+		rad *= -1;
+	return rad;
 }
 
 /*************************************************************************
@@ -264,7 +163,7 @@ void radToDms(double angle, bool& sign, unsigned int& d, unsigned int& m, double
 	}
 	if (m==60)
 	{
-		m = 0.;
+		m = 0;
 		d += 1;
 	}	
 }
@@ -342,7 +241,7 @@ QString radToHmsStrAdapt(const double angle)
  Convert an angle in radian to a hms formatted string
  If decimal is true,  output should be like this: "  16h29m55.3s"
  If decimal is true,  output should be like this: "  16h20m00.4s"
- If decimal is false, output should be like this: "0h26m5s"
+ If decimal is false, output should be like this: "   0h26m5s"
 *************************************************************************/
 QString radToHmsStr(const double angle, const bool decimal)
 {
@@ -367,7 +266,7 @@ QString radToHmsStr(const double angle, const bool decimal)
 	// handle carry case (when seconds are rounded up)
 	if (QString("%1").arg(s, 0, 'f', precision) == carry)
 	{
-		s=0;
+		s=0.;
 		m+=1;
 	}
 	if (m==60)
@@ -375,7 +274,7 @@ QString radToHmsStr(const double angle, const bool decimal)
 		m=0;
 		h+=1;
 	}
-	if (h==24 && m==0 && s==0)
+	if (h==24 && m==0 && s==0.)
 		h=0;
 
 	return QString("%1h%2m%3s").arg(h, width).arg(m, 2, 10, QChar('0')).arg(s, 3+precision, 'f', precision, QChar('0'));
@@ -395,7 +294,7 @@ QString radToDmsStrAdapt(const double angle, const bool useD)
 	bool sign;
 	unsigned int d,m;
 	double s;
-	StelUtils::radToDms(angle+0.005*M_PI/180/(60*60)*(angle<0?-1.:1.), sign, d, m, s);
+	StelUtils::radToDms(angle+0.005*M_PI/180/(60*60)*(angle<0?-1.:1.), sign, d, m, s); // NOTE: WTF???
 	QString str;
 	QTextStream os(&str);
 
@@ -422,6 +321,12 @@ QString radToDmsStrAdapt(const double angle, const bool useD)
 *************************************************************************/
 QString radToDmsStr(const double angle, const bool decimal, const bool useD)
 {
+	int precission = 0;
+	if (decimal)
+		precission = 1;
+
+	return StelUtils::radToDmsPStr(angle, precission, useD);
+	/*
 	QChar degsign('d');
 	if (!useD)
 	{
@@ -450,6 +355,7 @@ QString radToDmsStr(const double angle, const bool decimal, const bool useD)
 	os << fixed << qSetFieldWidth(width) << qSetPadChar('0') << s << qSetFieldWidth(0) << '\"';
 
 	return str;
+	*/
 }
 
 /*************************************************************************
@@ -465,7 +371,7 @@ QString radToDmsPStr(const double angle, const int precision, const bool useD)
 	bool sign;
 	unsigned int d,m;
 	double s;
-	StelUtils::radToDms(angle+0.005*M_PI/180/(60*60)*(angle<0?-1.:1.), sign, d, m, s);
+	StelUtils::radToDms(angle, sign, d, m, s);
 	QString str;
 	QTextStream os(&str);
 	os << (sign?'+':'-') << d << degsign;
@@ -493,7 +399,7 @@ void decDegToDms(double angle, bool &sign, unsigned int &d, unsigned int &m, dou
 	m = (unsigned int)((angle-d)*60);
 	s = (angle-d)*3600.-60.*m;
 
-	if (s==60.)
+	if (s>59.9)
 	{
 		s = 0.;
 		m += 1;
@@ -522,12 +428,16 @@ double dmsStrToRad(const QString& s)
 	if (!reg.exactMatch(s))
 		return 0;
 	QStringList list = reg.capturedTexts();
-	bool sign = (list[1] == "+");
+	bool sign = (list[1] == "-");
 	int deg = list[2].toInt();
 	int min = list[3].toInt();
 	int sec = list[4].toInt();
 
-	return dmsToRad(sign ? deg : -deg, min, sec);
+	double rad = dmsToRad(qAbs(deg), min, sec);
+	if (sign)
+		rad *= -1;
+
+	return rad;
 }
 
 Vec2f strToVec2f(const QStringList &s)
@@ -638,7 +548,7 @@ void spheToRect(const float lng, const float lat, Vec3f& v)
 	v.set(cos(dlng) * cosLat, sin(dlng) * cosLat, sin(dlat));
 }
 
-void rectToSphe(double *lng, double *lat, const Vec3d& v)
+void rectToSphe(double *lng, double *lat, const Vec3d &v)
 {
 	double r = v.length();
 	*lat = asin(v[2]/r);
@@ -717,8 +627,8 @@ double getDecAngle(const QString& str)
 		float min = re3.capturedTexts()[2].isEmpty()? 0 : re3.capturedTexts()[2].toFloat();
 		float sec = re3.capturedTexts()[3].isEmpty()? 0 : re3.capturedTexts()[3].toFloat();
 		float r = qAbs(deg) + min / 60 + sec / 3600;
-		if (deg<0)
-			r *= -1.;
+		if (deg<0.f)
+			r *= -1.f;
 		return (r * 2 * M_PI / 360.);
 	}
 
@@ -951,11 +861,11 @@ QString localeDateString(const int year, const int month, const int day, const i
 			}
 			else if (frag == "ddd")
 			{
-				out += QDate::shortDayName(dayOfWeek+1);
+				out += StelLocaleMgr::shortDayName(dayOfWeek+1);
 			}
 			else if (frag == "dddd")
 			{
-				out += QDate::longDayName(dayOfWeek+1);
+				out += StelLocaleMgr::longDayName(dayOfWeek+1);
 			}
 			else if (frag == "M")
 			{
@@ -967,11 +877,11 @@ QString localeDateString(const int year, const int month, const int day, const i
 			}
 			else if (frag == "MMM")
 			{
-				out += QDate::shortMonthName(month);
+				out += StelLocaleMgr::shortMonthName(month);
 			}
 			else if (frag == "MMMM")
 			{
-				out += QDate::longMonthName(month);
+				out += StelLocaleMgr::longMonthName(month);
 			}
 			else if (frag == "y")
 			{
@@ -1005,8 +915,6 @@ QString localeDateString(const int year, const int month, const int day, const i
 		{
 			out += fmt.at(i);
 		}
-
-
 	}
 
 	return out;
@@ -1016,7 +924,6 @@ QString localeDateString(const int year, const int month, const int day, const i
 //! limitations of qdatetime for large dates in the past.  see QDateTime::toString().
 QString localeDateString(const int year, const int month, const int day, const int dayOfWeek)
 {
-
 	// try the QDateTime first
 	QDate test(year, month, day);
 
@@ -1156,7 +1063,6 @@ int numberOfDaysInMonthInYear(const int month, const int year)
 		case 11:
 			return 30;
 			break;
-
 		case 2:
 			if ( year > 1582 )
 			{
@@ -1195,7 +1101,6 @@ int numberOfDaysInMonthInYear(const int month, const int year)
 				}
 			}
 			break;
-
 		case 0:
 			return numberOfDaysInMonthInYear(12, year-1);
 			break;
@@ -1238,7 +1143,6 @@ double yearFraction(const int year, const int month, const double day)
 	double d=dayInYear(year, month, 0)+day;
 	double daysInYear=( isLeapYear(year) ? 366.0 : 365.0);
 	return year+d/daysInYear;
-
 }
 
 //! given the submitted year/month/day hour:minute:second, try to
@@ -1336,7 +1240,7 @@ void debugQVariantMap(const QVariant& m, const QString& indent, const QString& k
 	{
 		qDebug() << indent + key + "(map):";
 		QList<QString> keys = m.toMap().keys();
-		qSort(keys);
+		std::sort(keys.begin(), keys.end());
 		for (auto k : keys)
 		{
 			debugQVariantMap(m.toMap()[k], indent + "    ", k);
@@ -1424,6 +1328,16 @@ QString hoursToHmsStr(const double hours, const bool lowprecision)
 	else
 	{
 		float s = (((qAbs(hours)-qAbs(double(h)))*60)-m)*60;
+		if (s>59.9f)
+		{
+			m += 1;
+			s = 0.f;
+		}
+		if (m==60)
+		{
+			h += 1;
+			m = 0;
+		}
 		return QString("%1h%2m%3s").arg(h).arg(m, 2, 10, QChar('0')).arg(s, 4, 'f', 1, QChar('0'));
 	}
 }
@@ -1459,7 +1373,7 @@ double getDeltaTByEspenakMeeus(const double jDay)
 	// A summary is described here:
 	// http://eclipse.gsfc.nasa.gov/SEhelp/deltatpoly2004.html
 
-	double y = year+((month-1)*30.5+day/31.*30.5)/366;
+	double y = getDecYear(year, month, day);
 
 	// set the default value for Delta T
 	double u = (y-1820)/100.;
@@ -1662,30 +1576,8 @@ double getDeltaTByStephensonMorrison1995(const double jDay)
 // Implementation of algorithm by Stephenson & Houlden (1986) for DeltaT computation
 double getDeltaTByStephensonHoulden(const double jDay)
 {
-	// TODO FIXME: GZ 2016-12: WHAT IS THIS?? Stephenson-Houlden 1986 has a different Formula!!
-//	int year, month, day;
-//	double u;
-//	double deltaT = 0.;
-//	getDateFromJulianDay(jDay, &year, &month, &day);
-
-//	double yeardec=getDecYear(year, month, day);
-//	// Limited years!?
-//	year=qBound(-600, year, 1600);
-
-//	if (year <= 948)
-//	{
-//		u = (yeardec-948)/100;
-//		deltaT = (46.5*u -405.0)*u + 1830.0;
-//	}
-//	if (948 < year && year <= 1600)
-//	{
-//		u = (yeardec-1850)/100;
-//		deltaT = 22.5*u*u;
-//	}
-//	return deltaT;
-// This formula found in the cited book, page (ii), formula (1).
+	// This formula found in the cited book, page (ii), formula (1).
 	double T=(jDay-2415020.0)/36525; // centuries from J1900.0
-
 	return (36.79*T+35.06)*T+4.87;
 }
 
@@ -1823,31 +1715,48 @@ double getDeltaTByChaprontMeeus(const double jDay)
 double getDeltaTByMontenbruckPfleger(const double jDay)
 {
 	double deltaT = 0.;
-
-	const double T=(jDay-2451545)/36525;
+	const double T=(jDay-2451545.)/36525.;
 	double t;
-	if (jDay<2387627.5) // 1825-01-01 0:00 ...
+	if (jDay<2387627.5 || jDay >=2453736.5) // ...1825-01-01 0:00 or 2006-01-01 0:00...
 		deltaT=0.0;
-	else if (jDay < 2396758.5) { // 1850-01-01 0:00
+	else if (jDay < 2396758.5) // 1850-01-01 0:00
+	{
 		t=T+1.75;
 		deltaT=(( -572.3*t+413.9)*t  -80.8)*t +10.4;
-	} else if (jDay < 2405889.5) { // 1875-01-01 0:00
+	}
+	else if (jDay < 2405889.5) // 1875-01-01 0:00
+	{
 		t=T+1.50;
 		deltaT=((   18.8*t-358.4)*t  +46.3)*t + 6.6;
-	} else if (jDay < 2415020.5) { // 1900-01-01 0:00
+	}
+	else if (jDay < 2415020.5) // 1900-01-01 0:00
+	{
 		t=T+1.25;
 		deltaT=((  867.4*t-166.2)*t  -10.8)*t - 3.9;
-	} else if (jDay < 2424151.5) { // 1925-01-01 0:00
+	}
+	else if (jDay < 2424151.5) // 1925-01-01 0:00
+	{
 		t=T+1.00;
 		deltaT=((-1467.4*t+327.5)*t +114.1)*t - 2.6;
-	} else if (jDay < 2433282.5) { // 1950-01-01 0:00
+	}
+	else if (jDay < 2433282.5) // 1950-01-01 0:00
+	{
 		t=T+0.75;
 		deltaT=((  483.4*t - 8.2)*t  - 6.3)*t +24.2;
-	} else if (jDay < 2442413.5) { // 1975-01-01 0:00
+	}
+	else if (jDay < 2442413.5) // 1975-01-01 0:00
+	{
 		t=T+0.50;
 		deltaT=((  550.7*t - 3.8)*t  +32.5)*t +29.3;
-	} else if (jDay < 2453736.5) { // 2006-01-01 0:00
+	}
+	else if (jDay < 2451545.5) // 2000-01-01 0:00
+	{
 		t=T+0.25;
+		deltaT=(( 1516.7*t-570.5)*t +130.5)*t +45.3;
+	}
+	else if (jDay < 2453736.5) // 2006-01-01 0:00 [extrapolation from 2000]
+	{
+		t=T+0.5;
 		deltaT=(( 1516.7*t-570.5)*t +130.5)*t +45.3;
 	}
 
@@ -1913,9 +1822,10 @@ double getDeltaTByMeeusSimons(const double jDay)
 	return deltaT;
 }
 
-// Implementation of algorithm by Reingold & Dershowitz (Cal. Calc. 1997, 2001, 2007, Cal. Tab. 2002) for DeltaT computation.
+// Implementation of algorithm by Reingold & Dershowitz (Cal. Calc. 1997, 2001, 2007, 2018, Cal. Tab. 2002) for DeltaT computation.
 // Created as yet another multi-segment polynomial fit through the table in Meeus: Astronomical Algorithms (1991).
 // Note that only the Third edition (2007) adds the 1700-1799 term.
+// Note that only the ultimate edition (2018) adds the -500..1699 and 2006..2150 terms.
 // More efficient reimplementation with stricter adherence to the source.
 double getDeltaTByReingoldDershowitz(const double jDay)
 {
@@ -1923,44 +1833,73 @@ double getDeltaTByReingoldDershowitz(const double jDay)
 	getDateFromJulianDay(jDay, &year, &month, &day);
 	// R&D don't use a float-fraction year, but explicitly only the integer year! And R&D use a proleptic Gregorian year before 1582.
 	// We cannot do that, but the difference is negligible.
-	// FIXME: why are displayed values so far off the computed values? It seems currently broken!
 	double deltaT=0.0; // If it returns 0, there is a bug!
 
-	if ((year >= 2019) || (year < 1620))
+	if ((year>= 2051) && (year <= 2150))
 	{
-		double jdYear_0; getJDFromDate(&jdYear_0, year, 1, 1, 0, 0, 0);
-		double jd1810_0; getJDFromDate(&jd1810_0, 1810, 1, 1, 0, 0, 0);
-		double x = (jdYear_0-jd1810_0+0.5);
-		deltaT = x*x/41048480.0 - 15.0;
+		// [2051..2150]
+		double x = (year-1820)/100.;
+		deltaT = (- 20 + 32*x*x + 0.5628*(2150-year));
 	}
-	else if (year >= 1988)
+	else if ((year >= 1987) && (year <= 2050))
 	{
-		deltaT = year-1933.0;
-	}
-	else if (year >= 1800)
-	{
-		double jd1900_0; getJDFromDate(&jd1900_0, 1900, 1, 1, 0, 0, 0);
-		double jdYear_5; getJDFromDate(&jdYear_5, year, 7, 1, 0, 0, 0);
-		double c = (jdYear_5-jd1900_0) * (1/36525.0);
-		if (year >= 1900)
+		int y2000 = year-2000;
+		if (year>=2006) // [2006..2050]
 		{
-			deltaT = (((((((-0.212591*c +0.677066)*c -0.861938)*c +0.553040)*c -0.181133)*c +0.025184)*c +0.000297)*c -0.00002) * 86400.0;
+			deltaT = ((0.005589*y2000 + 0.32217)*y2000 + 62.92);
 		}
-		else //if (year >= 1800)
+		else  // [1987..2005]
 		{
-			deltaT = ((((((((((2.043794*c +11.636204)*c +28.316289)*c +38.291999)*c +31.332267)*c +15.845535)*c +4.867575)*c +0.865736)*c +0.083563)*c +0.003844)*c -0.000009) * 86400.0;
+			deltaT = (((((0.00002373599*y2000 + 0.000651814)*y2000 + 0.0017275)*y2000 - 0.060374)*y2000 + 0.3345)*y2000 + 63.86);
 		}
 	}
-	else if (year >= 1700)
-	{ // This term was added in the third edition (2007), its omission was a fault of the authors!
-		double yDiff1700 = year-1700.0;
-		deltaT = ((-0.0000266484*yDiff1700 +0.003336121)*yDiff1700 - 0.005092142)*yDiff1700 + 8.118780842;
-	}
-	else if (year >= 1620)
+	else if ((year >= 1800) && (year <= 1986))
 	{
-		double yDiff1600 = year-1600.0;
-		deltaT = (0.0219167*yDiff1600 -4.0675)*yDiff1600 +196.58333;
+		// FIXME: This part should be check and maybe partially rewrited (gregorian-date-difference?)
+		//        because this part gives the strange values of DeltaT
+		double c = (getFixedFromGregorian(1900, 1, 1)-getFixedFromGregorian(year, 7, 1))/36525.;
+
+		if (year >= 1900) // [1900..1986]
+		{
+			deltaT = ((((((-0.212591*c + 0.677066)*c - 0.861938)*c + 0.553040)*c - 0.181133)*c + 0.025184)*c + 0.000297)*c - 0.00002;
+		}
+		else    // [1800..1899]
+		{
+			deltaT = (((((((((2.043794*c + 11.636204)*c + 28.316289)*c + 38.291999)*c + 31.332267)*c + 15.845535)*c + 4.867575)*c + 0.865736)*c + 0.083563)*c + 0.003844)*c - 0.000009;
+		}
+		deltaT *= 86400.; // convert to seconds
 	}
+	else if ((year>=1700) && (year<=1799))
+	{
+		// [1700..1799]
+		int y1700 = year-1700;
+		deltaT = (((-0.0000266484*y1700 + 0.003336121)*y1700 - 0.005092142)*y1700 + 8.118780842);
+	}
+	else if ((year>=1600) && (year<=1699))
+	{
+		// [1600..1699]
+		int y1600 = year-1600;
+		deltaT = (((0.000140272128*y1600 - 0.01532)*y1600 - 0.9808)*y1600 + 120);
+	}
+	else if ((year>=500) && (year<=1599))
+	{
+		// [500..1599]
+		double y1000 = (year-1000)/100.;
+		deltaT = ((((((0.0083572073*y1000 - 0.005050998)*y1000 - 0.8503463)*y1000 + 0.319781)*y1000 + 71.23472)*y1000 - 556.01)*y1000 + 1574.2);
+	}
+	else if ((year>-500) && (year<500))
+	{
+		// (-500..500)
+		double y0 = year/100.;
+		deltaT = ((((((0.0090316521*y0 + 0.022174192)*y0 - 0.1798452)*y0 - 5.952053)*y0 + 33.78311)*y0 - 1014.41)*y0 + 10583.6);
+	}
+	else
+	{
+		// otherwise
+		double x = (year-1820)/100.;
+		deltaT = (-20 + 32*x*x);
+	}
+
 	return deltaT;
 }
 
@@ -1995,11 +1934,23 @@ double getDeltaTByIslamSadiqQureshi(const double jDay)
 	int year, month, day;
 	getDateFromJulianDay(jDay, &year, &month, &day);
 	double deltaT; // Return deltaT for the edge year outside valid range.
-	double u;
-	const double ub=(jDay-2454101.0)/36525.0; // (2007-jan-0.5)
+	double u, ub;
 
-	// Limited years!
-	year=qBound(1620, year, 2007);
+	// Limited years: Apply border values!
+	//year=qBound(1620, year, 2007);
+	if (year<1620)
+	{
+		const double j1620=qDateTimeToJd(QDateTime(QDate(1620, 1, 1), QTime(0, 0, 0), Qt::UTC));
+		ub=(j1620-2454101.0)/36525.0;
+	}
+	else if (year>2007)
+	{
+		const double j2008=qDateTimeToJd(QDateTime(QDate(2008, 1, 1), QTime(0, 0, 0), Qt::UTC));
+		ub=(j2008-2454101.0)/36525.0;
+	}
+	else
+		ub=(jDay-2454101.0)/36525.0; // (2007-jan-0.5)
+
 
 	if (year <= 1698)
 	{
@@ -2072,7 +2023,7 @@ double getDeltaTByKhalidSultanaZaidi(const double jDay)
 	else // if (year<=2013)
 		i=8;
 
-	double u = k[i] + (year - 2000)/100;
+	double u = k[i] + (year - 2000.)/100.; // Avoid possible wrong calculations!
 
 	return (((a4[i]*u + a3[i])*u + a2[i])*u + a1[i])*u + a0[i];
 }
@@ -2492,6 +2443,21 @@ double getDecYear(const int year, const int month, const int day)
 	return year+((month-1)*30.5+day/31.*30.5)/366;
 }
 
+int getFixedFromGregorian(const int year, const int month, const int day)
+{
+	int y = year - 1;
+	int r = 365*y + std::floor(y/4.) - std::floor(y/100.) + std::floor(y/400.) + std::floor((367 * month - 362)/12.);
+	if (month <= 2)
+		r += 0;
+	else if (isLeapYear(year))
+		r -= 1;
+	else
+		r -= 2;
+	r += day;
+
+	return r;
+}
+
 int compareVersions(const QString v1, const QString v2)
 {
 	// result (-1: v1<v2; 0: v1==v2; 1: v1>v2)
@@ -2621,10 +2587,8 @@ QByteArray uncompress(QIODevice& device, qint64 maxBytes)
 			}
 
 			out.append(inflateBuffer.constData(), CHUNK - strm.avail_out);
-
-		}while(strm.avail_out == 0); //if zlib has more data for us, repeat
-
-	}while(ret!=Z_STREAM_END);
+		} while(strm.avail_out == 0); //if zlib has more data for us, repeat
+	} while(ret!=Z_STREAM_END);
 
 	// close zlib
 	inflateEnd(&strm);

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELSKYDRAWER_HPP_
-#define _STELSKYDRAWER_HPP_
+#ifndef STELSKYDRAWER_HPP
+#define STELSKYDRAWER_HPP
 
 #include "RefractionExtinction.hpp"
 #include "StelTextureTypes.hpp"
@@ -65,13 +65,13 @@ class StelSkyDrawer : public QObject, protected QOpenGLFunctions
 	Q_PROPERTY(double customPlanetMagLimit READ getCustomPlanetMagnitudeLimit WRITE setCustomPlanetMagnitudeLimit NOTIFY customPlanetMagLimitChanged)
 
 	Q_PROPERTY(bool flagLuminanceAdaptation READ getFlagLuminanceAdaptation WRITE setFlagLuminanceAdaptation NOTIFY flagLuminanceAdaptationChanged)
+	Q_PROPERTY(double daylightLabelThreshold READ getDaylightLabelThreshold WRITE setDaylightLabelThreshold NOTIFY daylightLabelThresholdChanged)
 
 	Q_PROPERTY(double extinctionCoefficient READ getExtinctionCoefficient WRITE setExtinctionCoefficient NOTIFY extinctionCoefficientChanged)
 	Q_PROPERTY(double atmosphereTemperature READ getAtmosphereTemperature WRITE setAtmosphereTemperature NOTIFY atmosphereTemperatureChanged)
 	Q_PROPERTY(double atmospherePressure READ getAtmospherePressure WRITE setAtmospherePressure NOTIFY atmospherePressureChanged)
 
 public:
-
 	//! Constructor
 	StelSkyDrawer(StelCore* core);
 	//! Destructor
@@ -106,7 +106,11 @@ public:
 
 	bool drawPointSource(StelPainter* sPainter, const Vec3f& v, const RCMag &rcMag, const Vec3f& bcolor, bool checkInScreen=false, float twinkleFactor=1.0f);
 
-	void drawSunCorona(StelPainter* painter, const Vec3f& v, float radius, const Vec3f& color, const float alpha);
+	//! Draw an image of the solar corona onto the screen at position v.
+	//! @param radius depends on the actually used texture and current disk size of the sun.
+	//! @param alpha opacity value. Set 1 for full visibility, but usually keep close to 0 except during solar eclipses.
+	//! @param angle includes parallactic angle (if alt/azimuth frame) and angle between solar polar axis and celestial equator.
+	void drawSunCorona(StelPainter* painter, const Vec3f& v, float radius, const Vec3f& color, const float alpha, const float angle);
 
 	//! Terminate drawing of a 3D model, draw the halo
 	//! @param p the StelPainter instance to use for this drawing operation
@@ -204,21 +208,18 @@ public slots:
 	//! Toggle the application of user-defined star magnitude limit.
 	//! If enabled, stars fainter than the magnitude set with
 	//! setCustomStarMagnitudeLimit() will not be displayed.
-	// FIXME: Exposed to scripts - make sure it synchs with the GUI. --BM
 	void setFlagStarMagnitudeLimit(bool b) {if(b!=flagStarMagnitudeLimit){ flagStarMagnitudeLimit = b; emit flagStarMagnitudeLimitChanged(b);}}
 	//! @return true if the user-defined star magnitude limit is in force.
 	bool getFlagStarMagnitudeLimit() const {return flagStarMagnitudeLimit;}
 	//! Toggle the application of user-defined deep-sky object magnitude limit.
 	//! If enabled, deep-sky objects fainter than the magnitude set with
 	//! setCustomNebulaMagnitudeLimit() will not be displayed.
-	// FIXME: Exposed to scripts - make sure it synchs with the GUI. --BM
 	void setFlagNebulaMagnitudeLimit(bool b) {if(b!=flagNebulaMagnitudeLimit){ flagNebulaMagnitudeLimit = b; emit flagNebulaMagnitudeLimitChanged(b);}}
 	//! @return true if the user-defined nebula magnitude limit is in force.
 	bool getFlagNebulaMagnitudeLimit() const {return flagNebulaMagnitudeLimit;}
 	//! Toggle the application of user-defined solar system object magnitude limit.
 	//! If enabled, planets, planetary moons, asteroids (KBO, ...) and comets fainter than the magnitude set with
 	//! setCustomPlanetMagnitudeLimit() will not be displayed.
-	// FIXME: Exposed to scripts - make sure it synchs with the GUI. --BM  --- GZ: this was copy/paste. Track down BM's changes!!!
 	void setFlagPlanetMagnitudeLimit(bool b) {if(b!=flagPlanetMagnitudeLimit){ flagPlanetMagnitudeLimit = b; emit flagPlanetMagnitudeLimitChanged(b);}}
 	//! @return true if the user-defined nebula magnitude limit is in force.
 	bool getFlagPlanetMagnitudeLimit() const {return flagPlanetMagnitudeLimit;}
@@ -248,6 +249,13 @@ public slots:
 	void setFlagLuminanceAdaptation(bool b) {if(b!=flagLuminanceAdaptation){ flagLuminanceAdaptation=b; emit flagLuminanceAdaptationChanged(b);}}
 	//! Get the current value of eye adaptation flag
 	bool getFlagLuminanceAdaptation() const {return flagLuminanceAdaptation;}
+
+	//! Set the label brightness threshold
+	void setDaylightLabelThreshold(double t) {if(t!=daylightLabelThreshold){ daylightLabelThreshold=t; emit daylightLabelThresholdChanged(t);}}
+	//! Get the current label brightness threshold
+	double getDaylightLabelThreshold() const {return daylightLabelThreshold;}
+	//! Return a brightness value based on objects in view (sky, sun, moon, ...)
+	double getWorldAdaptationLuminance() const;
 
 	//! Informing the drawer whether atmosphere is displayed.
 	//! This is used to avoid twinkling/simulate extinction/refraction.
@@ -307,6 +315,8 @@ signals:
 
 	//! Emitted whenever the luminance adaptation flag is toggled
 	void flagLuminanceAdaptationChanged(bool b);
+	//! Emitted when threshold value to draw info text in black is changed
+	void daylightLabelThresholdChanged(double t);
 
 	void extinctionCoefficientChanged(double coeff);
 	void atmosphereTemperatureChanged(double celsius);
@@ -400,20 +410,15 @@ private:
 	float limitLuminance;
 
 	//! User-defined magnitude limit for stars.
-	//! Interpreted as a lower limit - stars fainter than this value will not
-	//! be displayed.
+	//! Interpreted as a lower limit - stars fainter than this value will not be displayed.
 	//! Used if flagStarMagnitudeLimit is true.
 	double customStarMagLimit;
 	//! User-defined magnitude limit for deep-sky objects.
-	//! Interpreted as a lower limit - nebulae fainter than this value will not
-	//! be displayed.
+	//! Interpreted as a lower limit - nebulae fainter than this value will not be displayed.
 	//! Used if flagNebulaMagnitudeLimit is true.
-	//! @todo Why the asterisks this is not in NebulaMgr? --BM
-	//  GZ To explain: we have 3 limits for stars, nebulae, planets. It's easier to maintain the pretty similar code in 1 place.
 	double customNebulaMagLimit;
 	//! User-defined magnitude limit for solar system objects.
-	//! Interpreted as a lower limit - planets fainter than this value will not
-	//! be displayed.
+	//! Interpreted as a lower limit - planets fainter than this value will not be displayed.
 	//! Used if flagPlanetMagnitudeLimit is true.
 	double customPlanetMagLimit;
 
@@ -472,9 +477,12 @@ private:
 	StelTextureSP texSunHalo;
 	StelTextureSP texSunCorona;
 
+	//! Simulate the eye's luminance adaptation?
 	bool flagLuminanceAdaptation;
+	//! a customizable value in cd/m^2 which is used to decide when to render the InfoText in black (when sky is brighter than this)
+	double daylightLabelThreshold;
 
 	float big3dModelHaloRadius;
 };
 
-#endif // _STELSKYDRAWER_HPP_
+#endif // STELSKYDRAWER_HPP

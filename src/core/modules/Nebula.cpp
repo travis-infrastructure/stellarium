@@ -30,6 +30,7 @@
 #include "StelCore.hpp"
 #include "StelPainter.hpp"
 #include "SolarSystem.hpp"
+#include "RefractionExtinction.hpp"
 
 #include <QTextStream>
 #include <QFile>
@@ -126,12 +127,14 @@ Nebula::Nebula()
 	, UGC_nb(0)
 	, Arp_nb(0)
 	, VV_nb(0)	
+	, Abell_nb(0)
 	, Ced_nb("")
 	, PK_nb("")
 	, PNG_nb("")
 	, SNRG_nb("")
 	, ACO_nb("")
 	, HCG_nb("")
+	, ESO_nb("")
 	, withoutID(false)
 	, nameI18("")
 	, mTypeString()
@@ -153,6 +156,32 @@ Nebula::Nebula()
 
 Nebula::~Nebula()
 {
+}
+
+QString Nebula::getMagnitudeInfoString(const StelCore *core, const InfoStringGroup& flags, const double alt_app, const int decimals) const
+{
+	QString res;
+	if (vMag < 50.f && flags&Magnitude)
+	{
+		QString emag = "";
+		QString tmag = q_("Magnitude");
+		if (nType == NebDn)
+			tmag = q_("Opacity");
+
+		if (nType != NebDn && core->getSkyDrawer()->getFlagHasAtmosphere() && (alt_app>-2.0*M_PI/180.0)) // Don't show extincted magnitude much below horizon where model is meaningless.
+		{
+			const Extinction &extinction=core->getSkyDrawer()->getExtinction();
+			float airmass=extinction.airmass(std::cos(M_PI/2.0-alt_app), true);
+
+			emag = QString(" (%1 <b>%2</b> %3 <b>%4</b> %5)").arg(q_("reduced to"), QString::number(getVMagnitudeWithExtinction(core), 'f', decimals), q_("by"), QString::number(airmass, 'f', 2), q_("Airmasses"));
+		}
+		res = QString("%1: <b>%2</b>%3<br />").arg(tmag, QString::number(getVMagnitude(core), 'f', decimals), emag);
+	}
+	if (bMag < 50.f && vMag > 50.f && flags&Magnitude)
+		res.append(QString("%1: <b>%2</b> (%3: B)<br />").arg(q_("Magnitude"), QString::number(bMag, 'f', decimals), q_("Photometric system")));
+	// TODO: Extinction for B magnitude? Or show B magnitude in addition to valid V magnitude?
+
+	return res;
 }
 
 QString Nebula::getInfoString(const StelCore *core, const InfoStringGroup& flags) const
@@ -222,6 +251,10 @@ QString Nebula::getInfoString(const StelCore *core, const InfoStringGroup& flags
 			catIds << QString("ACO %1").arg(ACO_nb);
 		if (!HCG_nb.isEmpty())
 			catIds << QString("HCG %1").arg(HCG_nb);
+		if (Abell_nb > 0)
+			catIds << QString("Abell %1").arg(Abell_nb);
+		if (!ESO_nb.isEmpty())
+			catIds << QString("ESO %1").arg(ESO_nb);
 
 		if (!nameI18.isEmpty() && !catIds.isEmpty() && flags&Name)
 			oss << "<br>";
@@ -241,20 +274,8 @@ QString Nebula::getInfoString(const StelCore *core, const InfoStringGroup& flags
 			oss << QString("%1: <b>%2</b> (%3)").arg(q_("Type"), getTypeString(), mt) << "<br>";
 	}
 
-	if (vMag < 50.f && flags&Magnitude)
-	{
-		QString emag = "";
-		QString tmag = q_("Magnitude");
-		if (nType == NebDn)
-			tmag = q_("Opacity");
+	oss << getMagnitudeInfoString(core, flags, alt_app, 2);
 
-		if (nType != NebDn && core->getSkyDrawer()->getFlagHasAtmosphere() && (alt_app>-3.0*M_PI/180.0)) // Don't show extincted magnitude much below horizon where model is meaningless.
-			emag = QString(" (%1: <b>%2</b>)").arg(q_("extincted to"), QString::number(getVMagnitudeWithExtinction(core), 'f', 2));
-
-		oss << QString("%1: <b>%2</b>%3").arg(tmag, QString::number(getVMagnitude(core), 'f', 2), emag) << "<br />";
-	}
-	if (bMag < 50.f && vMag > 50.f && flags&Magnitude)
-		oss << QString("%1: <b>%2</b> (%3: B)").arg(q_("Magnitude"), QString::number(bMag, 'f', 2), q_("Photometric system")) << "<br />";
 
 	if (flags&Extra)
 	{
@@ -278,12 +299,11 @@ QString Nebula::getInfoString(const StelCore *core, const InfoStringGroup& flags
 			mu = QString("%1/%2<sup>2</sup>").arg(qc_("mag", "magnitude"), q_("arcmin"));
 			if (flagUseArcsecSurfaceBrightness)
 				mu = QString("%1/%2<sup>2</sup>").arg(qc_("mag", "magnitude"), q_("arcsec"));
-
 		}
 
 		if (getSurfaceBrightness(core)<99)
 		{
-			if (core->getSkyDrawer()->getFlagHasAtmosphere() && (alt_app>-3.0*M_PI/180.0) && getSurfaceBrightnessWithExtinction(core)<99) // Don't show extincted surface brightness much below horizon where model is meaningless.
+			if (core->getSkyDrawer()->getFlagHasAtmosphere() && (alt_app>-2.0*M_PI/180.0) && getSurfaceBrightnessWithExtinction(core)<99) // Don't show extincted surface brightness much below horizon where model is meaningless.
 			{
 				oss << QString("%1: <b>%2</b> %5 (%3: <b>%4</b> %5)").arg(sb, QString::number(getSurfaceBrightness(core, flagUseArcsecSurfaceBrightness), 'f', 2),
 											  ae, QString::number(getSurfaceBrightnessWithExtinction(core, flagUseArcsecSurfaceBrightness), 'f', 2), mu) << "<br />";
@@ -369,12 +389,12 @@ QString Nebula::getInfoString(const StelCore *core, const InfoStringGroup& flags
 			if (oDistanceErr>0.f)
 			{
 				dx = QString("%1%2%3").arg(QString::number(oDistance, 'f', 3)).arg(QChar(0x00B1)).arg(QString::number(oDistanceErr, 'f', 3));
-				dy = QString("%1%2%3").arg(QString::number(oDistance*dc, 'f', ms)).arg(QChar(0x00B1)).arg(QString::number(oDistanceErr*dc, 'f', ms));
+				dy = QString("%1%2%3").arg(QString::number((double)oDistance*dc, 'f', ms)).arg(QChar(0x00B1)).arg(QString::number((double)oDistanceErr*dc, 'f', ms));
 			}
 			else
 			{
 				dx = QString("%1").arg(QString::number(oDistance, 'f', 3));
-				dy = QString("%1").arg(QString::number(oDistance*dc, 'f', ms));
+				dy = QString("%1").arg(QString::number((double)oDistance*dc, 'f', ms));
 			}
 
 			oss << QString("%1: %2 %3 (%4 %5)").arg(q_("Distance"), dx, dupc, dy, duly) << "<br />";
@@ -407,7 +427,6 @@ QString Nebula::getInfoString(const StelCore *core, const InfoStringGroup& flags
 
 		if (!getMorphologicalTypeDescription().isEmpty())
 			oss << QString("%1: %2.").arg(q_("Morphological description"), getMorphologicalTypeDescription()) << "<br />";
-
 	}
 
 	postProcessInfoString(str, flags);
@@ -542,7 +561,7 @@ Vec3f Nebula::getInfoColor(void) const
 
 double Nebula::getCloseViewFov(const StelCore*) const
 {
-	return majorAxisSize>0 ? majorAxisSize * 4 : 1;
+	return majorAxisSize>0.f ? majorAxisSize * 4. : 1.;
 }
 
 float Nebula::getSurfaceBrightness(const StelCore* core, bool arcsec) const
@@ -553,8 +572,8 @@ float Nebula::getSurfaceBrightness(const StelCore* core, bool arcsec) const
 		sq = 12.96e6; // 3600.f*3600.f, i.e. arcsec^2
 	if (bMag < 90.f && mag > 90.f)
 		mag = bMag;
-	if (mag<99.f && majorAxisSize>0 && nType!=NebDn)
-		return mag + 2.5*log10(getSurfaceArea()*sq);
+	if (mag<99.f && majorAxisSize>0.f && nType!=NebDn)
+		return mag + 2.5f*log10((double)getSurfaceArea()*sq);
 	else
 		return 99.f;
 }
@@ -564,8 +583,8 @@ float Nebula::getSurfaceBrightnessWithExtinction(const StelCore* core, bool arcs
 	float sq = 3600.f; // arcmin^2
 	if (arcsec)
 		sq = 12.96e6; // 3600.f*3600.f, i.e. arcsec^2
-	if (getVMagnitudeWithExtinction(core)<99.f && majorAxisSize>0 && nType!=NebDn)
-		return getVMagnitudeWithExtinction(core) + 2.5*log10(getSurfaceArea()*sq);
+	if (getVMagnitudeWithExtinction(core)<99.f && majorAxisSize>0.f && nType!=NebDn)
+		return getVMagnitudeWithExtinction(core) + 2.5f*log10((double)getSurfaceArea()*sq);
 	else
 		return 99.f;
 }
@@ -586,7 +605,7 @@ float Nebula::getContrastIndex(const StelCore* core) const
 
 float Nebula::getSurfaceArea(void) const
 {
-	if (majorAxisSize==minorAxisSize || minorAxisSize==0)
+	if (majorAxisSize==minorAxisSize || minorAxisSize==0.f)
 		return M_PI*(majorAxisSize/2.f)*(majorAxisSize/2.f); // S = pi*R^2 = pi*(D/2)^2
 	else
 		return M_PI*(majorAxisSize/2.f)*(minorAxisSize/2.f); // S = pi*a*b
@@ -713,12 +732,12 @@ float Nebula::getVisibilityLevelByMagnitude(void) const
 	if (surfaceBrightnessUsage)
 	{
 		lim = getSurfaceBrightness(core) - 3.f;
-		if (lim > 90) lim = mLim + 1.f;
+		if (lim > 90.f) lim = mLim + 1.f;
 	}
 	else
 	{
 		float mag = getVMagnitude(core);
-		if (lim > 90) lim = mLim;
+		if (lim > 90.f) lim = mLim;
 
 		// Dark nebulae. Not sure how to assess visibility from opacity? --GZ
 		if (nType==NebDn)
@@ -727,7 +746,7 @@ float Nebula::getVisibilityLevelByMagnitude(void) const
 			// 9-(opac-5)-2*(angularSize-0.5)
 			// GZ Not good for non-Barnards. weak opacity and large surface are antagonists. (some LDN are huge, but opacity 2 is not much to discern).
 			// The qMin() maximized the visibility gain for large objects.
-			if (majorAxisSize>0 && mag<90)
+			if (majorAxisSize>0.f && mag<90.f)
 				lim = mLim - mag - 2.0f*qMin(majorAxisSize, 1.5f);
 			else if (B_nb>0)
 				lim = 9.0f;
@@ -778,7 +797,6 @@ void Nebula::drawOutlines(StelPainter &sPainter, float maxMagHints) const
 		}
 		sPainter.setLineSmooth(false);
 	}
-
 }
 
 void Nebula::drawHints(StelPainter& sPainter, float maxMagHints) const
@@ -801,7 +819,6 @@ void Nebula::drawHints(StelPainter& sPainter, float maxMagHints) const
 	if (drawHintProportional)
 	{
 		scaledSize = getAngularSize(Q_NULLPTR) *M_PI/180.*sPainter.getProjector()->getPixelPerRadAtCenter();
-
 	}
 	const float finalSize=qMax(size, scaledSize);
 
@@ -887,10 +904,8 @@ void Nebula::drawHints(StelPainter& sPainter, float maxMagHints) const
 	Vec3f col(color[0]*lum*hintsBrightness, color[1]*lum*hintsBrightness, color[2]*lum*hintsBrightness);
 	if (!objectInDisplayedType())
 		col = Vec3f(0.f,0.f,0.f);
+
 	sPainter.setColor(col[0], col[1], col[2], 1);
-
-
-
 	sPainter.setBlending(true, GL_ONE, GL_ONE);
 
 	// Rotation looks good only for galaxies.
@@ -907,7 +922,6 @@ void Nebula::drawHints(StelPainter& sPainter, float maxMagHints) const
 	}
 	else	// no galaxy
 		sPainter.drawSprite2dMode(XY[0], XY[1], finalSize);
-
 }
 
 void Nebula::drawLabel(StelPainter& sPainter, float maxMagLabel) const
@@ -984,6 +998,10 @@ QString Nebula::getDSODesignation() const
 		str = QString("ACO %1").arg(ACO_nb);
 	else if (catalogFilters&CatHCG && !HCG_nb.isEmpty())
 		str = QString("HCG %1").arg(HCG_nb);
+	else if (catalogFilters&CatAbell && Abell_nb > 0)
+		str = QString("Abell %1").arg(Abell_nb);
+	else if (catalogFilters&CatESO && !ESO_nb.isEmpty())
+		str = QString("ESO %1").arg(ESO_nb);
 
 	return str;
 }
@@ -997,14 +1015,14 @@ void Nebula::readDSO(QDataStream &in)
 		>> orientationAngle >> redshift >> redshiftErr >> parallax >> parallaxErr >> oDistance >> oDistanceErr
 		>> NGC_nb >> IC_nb >> M_nb >> C_nb >> B_nb >> Sh2_nb >> VdB_nb >> RCW_nb >> LDN_nb >> LBN_nb >> Cr_nb
 		>> Mel_nb >> PGC_nb >> UGC_nb >> Ced_nb >> Arp_nb >> VV_nb >> PK_nb >> PNG_nb >> SNRG_nb >> ACO_nb
-		>> HCG_nb;
+		>> HCG_nb >> Abell_nb >> ESO_nb;
 
-	int f = NGC_nb + IC_nb + M_nb + C_nb + B_nb + Sh2_nb + VdB_nb + RCW_nb + LDN_nb + LBN_nb + Cr_nb + Mel_nb + PGC_nb + UGC_nb + Arp_nb + VV_nb;
-	if (f==0 && Ced_nb.isEmpty() && PK_nb.isEmpty() && PNG_nb.isEmpty() && SNRG_nb.isEmpty() && ACO_nb.isEmpty() && HCG_nb.isEmpty())
+	int f = NGC_nb + IC_nb + M_nb + C_nb + B_nb + Sh2_nb + VdB_nb + RCW_nb + LDN_nb + LBN_nb + Cr_nb + Mel_nb + PGC_nb + UGC_nb + Arp_nb + VV_nb + Abell_nb;
+	if (f==0 && Ced_nb.isEmpty() && PK_nb.isEmpty() && PNG_nb.isEmpty() && SNRG_nb.isEmpty() && ACO_nb.isEmpty() && HCG_nb.isEmpty() && ESO_nb.isEmpty())
 		withoutID = true;
 
 	StelUtils::spheToRect(ra,dec,XYZ);
-	Q_ASSERT(fabs(XYZ.lengthSquared()-1.)<0.000000001);
+	Q_ASSERT(fabs(XYZ.lengthSquared()-1.)<1e-9);
 	nType = (Nebula::NebulaType)oType;
 	pointRegion = SphericalRegionP(new SphericalPoint(getJ2000EquatorialPos(Q_NULLPTR)));
 }
@@ -1148,6 +1166,10 @@ bool Nebula::objectInDisplayedCatalog() const
 	else if ((catalogFilters&CatACO) && (!ACO_nb.isEmpty()))
 		r = true;
 	else if ((catalogFilters&CatHCG) && (!HCG_nb.isEmpty()))
+		r = true;
+	else if ((catalogFilters&CatAbell) && (Abell_nb>0))
+		r = true;
+	else if ((catalogFilters&CatESO) && (!ESO_nb.isEmpty()))
 		r = true;
 
 	// Special case: objects without ID from current catalogs

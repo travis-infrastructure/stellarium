@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
  
-#ifndef REMOTESYNC_HPP_
-#define REMOTESYNC_HPP_
+#ifndef REMOTESYNC_HPP
+#define REMOTESYNC_HPP
 
 #include "StelModule.hpp"
 #include "SyncClient.hpp"
@@ -93,6 +93,8 @@ public:
 	ClientBehavior getQuitBehavior() const { return quitBehavior; }
 
 	SyncState getState() const { return state; }
+	//! Very few propertries cannot be synchronized for technical reasons.
+	static bool isPropertyBlacklisted(const QString &name);
 
 public slots:
 	void setClientServerHost(const QString& clientServerHost);
@@ -185,6 +187,9 @@ private:
 
 	// GUI
 	RemoteSyncDialog* configDialog;
+	// A stringlist which contains property names which cannot be synchronized.
+	// The list currently is fixed.
+	static QStringList propertyBlacklist;
 };
 
 Q_DECLARE_METATYPE(RemoteSync::SyncState)
@@ -206,5 +211,5 @@ public:
 	virtual QObjectList getExtensionList() const { return QObjectList(); }
 };
 
-#endif /*REMOTESYNC_HPP_*/
+#endif /*REMOTESYNC_HPP*/
 

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _ASTERISMMGR_HPP_
-#define _ASTERISMMGR_HPP_
+#ifndef ASTERISMMGR_HPP
+#define ASTERISMMGR_HPP
 
 #include "StelObjectType.hpp"
 #include "StelObjectModule.hpp"
@@ -89,13 +89,13 @@ public:
 	// Methods defined in the StelModule class
 	//! Initialize the AsterismMgr.
 	//! Reads from the asterism parser object and updates the loading bar
-	//! as constellation objects are loaded for the required sky culture.
+	//! as asterism objects are loaded for the required sky culture.
 	virtual void init();
 
-	//! Draw constellation lines, art, names and boundaries.
+	//! Draw asterism lines, art, names and boundaries.
 	virtual void draw(StelCore* core);
 
-	//! Updates time-varying state for each Constellation.
+	//! Updates time-varying state for each asterism.
 	virtual void update(double deltaTime);
 
 	//! Return the value defining the order of call for the given action
@@ -104,11 +104,11 @@ public:
 	virtual double getCallOrder(StelModuleActionName actionName) const;
 
 	///////////////////////////////////////////////////////////////////////////
-	// Methods defined in StelObjectManager class
+	// Methods defined in StelObjectModule class
 	virtual QList<StelObjectP> searchAround(const Vec3d& v, double limitFov, const StelCore* core) const;
 
 	//! Return the matching asterism object's pointer if exists or Q_NULLPTR
-	//! @param nameI18n The case in-sensistive asterism name
+	//! @param nameI18n The case in-sensitive asterism name
 	virtual StelObjectP searchByNameI18n(const QString& nameI18n) const;
 
 	//! Return the matching asterism if exists or Q_NULLPTR
@@ -192,6 +192,9 @@ public slots:
 	//! Get the thickness of ray helper of the asterisms
 	int getRayHelperThickness() const { return rayHelperThickness; }
 
+	//! @return true if asterism lines is defined
+	bool isLinesDefined() { return hasAsterism; }
+
 signals:
 	void fontSizeChanged(const float newSize) const;
 	void linesColorChanged(const Vec3f & color) const;
@@ -255,4 +258,4 @@ private:
 	int rayHelperThickness;
 };
 
-#endif // _ASTERISMMGR_HPP_
+#endif // ASTERISMMGR_HPP

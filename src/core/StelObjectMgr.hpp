@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELOBJECTMGR_HPP_
-#define _STELOBJECTMGR_HPP_
+#ifndef STELOBJECTMGR_HPP
+#define STELOBJECTMGR_HPP
 
 #include "VecMath.hpp"
 #include "StelModule.hpp"
@@ -43,7 +43,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////
 	// Methods defined in the StelModule class
-	virtual void init() {;}
+	virtual void init();
 	virtual void draw(StelCore*) {;}
 	virtual void update(double) {;}
 
@@ -112,12 +112,12 @@ public:
 
 	//! Return the list objects of type "withType" which was recently selected by the user.
 	//! @param type return only objects of the given type
-	QList<StelObjectP> getSelectedObject(const QString& type);
+	QList<StelObjectP> getSelectedObject(const QString& type) const;
 
 	//! Set whether a pointer is to be drawn over selected object.
 	void setFlagSelectedObjectPointer(bool b) {objectPointerVisibility=b;}
 	//! Get whether a pointer is to be drawn over selected object.
-	bool getFlagSelectedObjectPointer(void) {return objectPointerVisibility;}
+	bool getFlagSelectedObjectPointer(void) const {return objectPointerVisibility;}
 
 	//! Find any kind of object by its translated name.
 	StelObjectP searchByNameI18n(const QString &name) const;
@@ -145,6 +145,22 @@ public:
 	//! If obj is valid, add an element ["found", true].
 	//! If obj is Q_NULLPTR, returns a 1-element map [["found", false]]
 	static QVariantMap getObjectInfo(const StelObjectP obj);
+
+public slots:
+	//! Set simulation time to the time of next transit of selected object
+	void nextTransit();
+	//! Set simulation time to the time of previous transit of selected object
+	void previousTransit();
+
+	//! Set simulation time to the time of next rising of selected object (if applicable)
+	void nextRising();
+	//! Set simulation time to the time of previous rising of selected object (if applicable)
+	void previousRising();
+
+	//! Set simulation time to the time of next setting of selected object (if applicable)
+	void nextSetting();
+	//! Set simulation time to the time of previous setting of selected object (if applicable)
+	void previousSetting();
 
 signals:
 	//! Indicate that the selected StelObjects has changed.
@@ -175,4 +191,4 @@ private:
 	float distanceWeight;
 };
 
-#endif // _SELECTIONMGR_HPP_
+#endif // _SELECTIONMGR_HPP

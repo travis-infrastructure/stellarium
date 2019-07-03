@@ -78,6 +78,7 @@ StelSkyDrawer::StelSkyDrawer(StelCore* acore) :
 	maxLum(0.f),
 	oldLum(-1.f),
 	flagLuminanceAdaptation(false),
+	daylightLabelThreshold(250.0),
 	big3dModelHaloRadius(150.f)
 {
 	setObjectName("StelSkyDrawer");
@@ -92,6 +93,7 @@ StelSkyDrawer::StelSkyDrawer(StelCore* acore) :
 	setMaxAdaptFov(conf->value("stars/mag_converter_max_fov",70.0).toFloat());
 	setMinAdaptFov(conf->value("stars/mag_converter_min_fov",0.1).toFloat());
 	setFlagLuminanceAdaptation(conf->value("viewing/use_luminance_adaptation",true).toBool());
+	setDaylightLabelThreshold(conf->value("viewing/sky_brightness_label_threshold", 250.0).toDouble());
 	setFlagStarMagnitudeLimit((conf->value("astro/flag_star_magnitude_limit", false).toBool()));
 	setCustomStarMagnitudeLimit(conf->value("astro/star_magnitude_limit", 6.5).toFloat());
 	setFlagPlanetMagnitudeLimit((conf->value("astro/flag_planet_magnitude_limit", false).toBool()));
@@ -478,7 +480,7 @@ bool StelSkyDrawer::drawPointSource(StelPainter* sPainter, const Vec3f& v, const
 }
 
 // Draw's the Sun's corona during a solar eclipse on Earth.
-void StelSkyDrawer::drawSunCorona(StelPainter* painter, const Vec3f& v, float radius, const Vec3f& color, const float alpha)
+void StelSkyDrawer::drawSunCorona(StelPainter* painter, const Vec3f& v, float radius, const Vec3f& color, const float alpha, const float angle)
 {
 	texSunCorona->bind();
 	painter->setBlending(true, GL_ONE, GL_ONE);
@@ -487,7 +489,8 @@ void StelSkyDrawer::drawSunCorona(StelPainter* painter, const Vec3f& v, float ra
 	painter->getProjector()->project(v, win);
 	// For some reason we must mix color with the given alpha as well, else mixing does not work.
 	painter->setColor(color[0]*alpha, color[1]*alpha, color[2]*alpha, alpha);
-	painter->drawSprite2dMode(win[0], win[1], radius);
+	// Our corona image was made in 2008-08-01 near Khovd, Mongolia. It shows the correct parallactic angle for its location and time, we must add this, and subtract the ecliptic/equator angle from that date of 15.43 degrees.
+	painter->drawSprite2dMode(win[0], win[1], radius, -angle+44.65f-15.43f);
 
 	postDrawPointSource(painter);
 }
@@ -915,4 +918,9 @@ void StelSkyDrawer::initColorTableFromConfigFile(QSettings* conf)
 // 		res += QString("Vec3f(%1,%2,%3),\n").arg(colorTable[i][0], 0, 'g', 6).arg(colorTable[i][1], 0, 'g', 6).arg(colorTable[i][2], 0, 'g', 6);
 // 	}
 // 	qDebug() << res;
+}
+
+double StelSkyDrawer::getWorldAdaptationLuminance() const
+{
+	return eye->getWorldAdaptationLuminance();
 }

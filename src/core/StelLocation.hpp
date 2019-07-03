@@ -16,8 +16,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELLOCATION_HPP_
-#define _STELLOCATION_HPP_
+#ifndef STELLOCATION_HPP
+#define STELLOCATION_HPP
 
 #include <QString>
 #include <QMetaType>
@@ -27,7 +27,7 @@
 class StelLocation
 {
 public:
-	StelLocation() : longitude(0.f), latitude(0.f), altitude(0), bortleScaleIndex(2.f), population(0.f), role('X'), isUserLocation(true) {;}
+	StelLocation() : longitude(0.f), latitude(0.f), altitude(0), bortleScaleIndex(2), population(0.f), role('X'), isUserLocation(true) {;}
 
 	//! Return a short string which can be used in a list view.
 	QString getID() const;
@@ -52,7 +52,7 @@ public:
 	//! Altitude in meter
 	int altitude;
 	//! Light pollution index following Bortle scale
-	float bortleScaleIndex;
+	int bortleScaleIndex;
 	//! A hint for associating a landscape to the location
 	QString landscapeKey;
 	//! Population in number of inhabitants
@@ -73,8 +73,10 @@ public:
 	//! Note that timezone names under various OSes may be different than those used in Stellarium's
 	//! location database (e.g. Ubuntu:Asia/Kolkata=Windows:Asia/Calcutta),
 	//! which requires some translation effort during the loading process.
+	//! After loading from the location DB, the ianaTimeZone should contain the full name which may differ from the database name.
 	//  See LP:1662132
 	// GZ renamed to more clearly indicate these are IANA names.
+	// Besides IANA names, other valid names seem to be "LMST", "LTST" and "system_default".
 	QString ianaTimeZone;
 
 	//! Parse a location from a line serialization
@@ -100,4 +102,4 @@ QDataStream& operator<<(QDataStream& out, const StelLocation& loc);
 //! Load the StelLocation from a binary blob.
 QDataStream& operator>>(QDataStream& in, StelLocation& loc);
 
-#endif // _STELLOCATION_HPP_
+#endif // STELLOCATION_HPP

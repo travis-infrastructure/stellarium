@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _SPHERICMIRRORCALCULATOR_HPP_
-#define _SPHERICMIRRORCALCULATOR_HPP_
+#ifndef SPHERICMIRRORCALCULATOR_HPP
+#define SPHERICMIRRORCALCULATOR_HPP
 
 #include "VecMath.hpp"
 
@@ -27,25 +27,25 @@ class QSettings;
 
 class SphericMirrorCalculator {
 public:
-  SphericMirrorCalculator(const QSettings& conf);
-  float getHorzZoomFactor() const {return horzZoomFactor;}
-  float getVertZoomFactor() const {return vertZoomFactor;}
-  bool transform(const Vec3f &v,float &x,float &y) const;
-  bool retransform(float x,float y,Vec3f &v) const;
-    // for calculating partial derivatives:
-  bool retransform(float x,float y, Vec3f& v, Vec3f& vX, Vec3f& vY) const;
+	SphericMirrorCalculator(const QSettings& conf);
+	float getHorzZoomFactor() const {return horzZoomFactor;}
+	float getVertZoomFactor() const {return vertZoomFactor;}
+	bool transform(const Vec3f &v,float &x,float &y) const;
+	bool retransform(float x,float y,Vec3f &v) const;
+	// for calculating partial derivatives:
+	bool retransform(float x,float y, Vec3f& v, Vec3f& vX, Vec3f& vY) const;
 private:
-  void initRotMatrix(float alpha,float delta,float phi);
+	void initRotMatrix(float alpha,float delta,float phi);
 private:
-  Vec3f P;          // projector
-  Vec3f DomeCenter;
-  float DomeRadius;
-  float PP;
-  float lP;
-  Vec3f p;
-  float horzZoomFactor;
-  float vertZoomFactor;
-  float alphaDeltaPhi[9];
+	Vec3f P;          // projector
+	Vec3f DomeCenter;
+	float DomeRadius;
+	float PP;
+	float lP;
+	Vec3f p;
+	float horzZoomFactor;
+	float vertZoomFactor;
+	float alphaDeltaPhi[9];
 };
 
-#endif // _SPHERICMIRRORCALCULATOR_HPP_
+#endif // SPHERICMIRRORCALCULATOR_HPP

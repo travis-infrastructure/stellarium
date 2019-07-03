@@ -43,8 +43,9 @@ StelTexture::~StelTexture()
 {
 	if (id != 0)
 	{
-		//make sure the correct GL context is bound!
-		StelApp::getInstance().ensureGLContextCurrent();
+		/// FS: make sure the correct GL context is bound!
+		/// Causes #595 flicker in Night Mode with DSS/HiPS. Tentatively remove this.
+		//StelApp::getInstance().ensureGLContextCurrent();
 
 		if (gl->glIsTexture(id)==GL_FALSE)
 		{
@@ -212,7 +213,7 @@ bool StelTexture::load()
 {
 	// If the file is remote, start a network connection.
 	if (loader == Q_NULLPTR && networkReply == Q_NULLPTR &&
-			(fullPath.startsWith("http://") || fullPath.startsWith("https://") || fullPath.startsWith("file://")))
+			(fullPath.startsWith("http", Qt::CaseInsensitive) || fullPath.startsWith("file://", Qt::CaseInsensitive)))
 	{
 		QNetworkRequest req = QNetworkRequest(QUrl(fullPath));
 		// Define that preference should be given to cached files (no etag checks)
@@ -353,8 +354,9 @@ bool StelTexture::glLoad(const GLData& data)
 	width = data.width;
 	height = data.height;
 
-	//make sure the correct GL context is bound!
-	StelApp::getInstance().ensureGLContextCurrent();
+	/// FS: make sure the correct GL context is bound!
+	/// Causes #595 flicker in Night Mode with DSS/HiPS. Tentatively remove this.
+	//StelApp::getInstance().ensureGLContextCurrent();
 	gl = QOpenGLContext::currentContext()->functions();
 
 	//check minimum texture size

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _TESTCONVERSIONS_HPP_
-#define _TESTCONVERSIONS_HPP_
+#ifndef TESTCONVERSIONS_HPP
+#define TESTCONVERSIONS_HPP
 
 #include <QObject>
 #include <QTest>
@@ -29,10 +29,31 @@ Q_OBJECT
 private slots:
 	void testHMSToRad();
 	void testDMSToRad();
+	void testDMSStrToRad();
 	void testRadToHMS();
-	void testRadToDMS();
+	void testRadToHMSStrAdapt();
+	void testRadToDMS();	
+	void testRadToDMSStrAdapt();
+	void testRadToDMSStr();
+	void testRadToDMSPStr();
 	void testDDToDMS();
+	void testDDToDMSStr();
+	void testRadToDD();
+	void testStringCoordinateToRad();
+	void testHMSToHours();
+	void testHMSStringToHours();
+	void testHoursToHMSStr();
+	void testRadToHMSStr();
+	void testRadToDecDegStr();
+	void testVec3fToHtmlColor();
+	void testHtmlColorToVec3f();
+	void testStrToVec2f();
+	void testVec2fToStr();
+	void testStrToVec3f();
+	void testVec3fToStr();
+	void testStrToVec4d();
+	void testVec4dToStr();
 };
 
-#endif // _TESTCONVERSIONS_HPP_
+#endif // _TESTCONVERSIONS_HPP
 

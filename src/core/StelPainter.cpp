@@ -25,6 +25,7 @@
 #include "StelProjectorClasses.hpp"
 #include "StelUtils.hpp"
 #include "Dithering.hpp"
+#include "SaturationShader.hpp"
 
 #include <QDebug>
 #include <QString>
@@ -66,7 +67,6 @@ StelPainter::GLState::GLState(QOpenGLFunctions* gl)
 	  lineWidth(1.0f),
 	  gl(gl)
 {
-
 }
 
 void StelPainter::GLState::apply()
@@ -446,8 +446,6 @@ void StelPainter::computeFanDisk(float radius, int innerFanSlices, int level, QV
 			vertexArr << x << y << 0;
 		}
 	}
-
-
 }
 
 static void sSphereMapTexCoordFast(float rho_div_fov, const float costheta, const float sintheta, QVector<float>& out)
@@ -459,7 +457,8 @@ static void sSphereMapTexCoordFast(float rho_div_fov, const float costheta, cons
 
 void StelPainter::sSphereMap(float radius, int slices, int stacks, float textureFov, int orientInside)
 {
-	float rho,x,y,z;
+	float rho;
+	double x,y,z;
 	int i, j;
 	const float* cos_sin_rho = StelUtils::ComputeCosSinRho(stacks);
 	const float* cos_sin_rho_p;
@@ -480,6 +479,7 @@ void StelPainter::sSphereMap(float radius, int slices, int stacks, float texture
 	static QVector<float> texCoordArr;
 
 	// draw intermediate stacks as quad strips
+	// LGTM comments: the floats are always <=1. We still prefer float multiplication (with insignificant accuracy loss) for speed.
 	if (!orientInside) // nsign==1
 	{
 		for (i = 0,cos_sin_rho_p=cos_sin_rho,rho=0.f; i < imax; ++i,cos_sin_rho_p+=2,rho+=drho)
@@ -488,14 +488,14 @@ void StelPainter::sSphereMap(float radius, int slices, int stacks, float texture
 			texCoordArr.resize(0);
 			for (j=0,cos_sin_theta_p=cos_sin_theta;j<=slices;++j,cos_sin_theta_p+=2)
 			{
-				x = -cos_sin_theta_p[1] * cos_sin_rho_p[1];
-				y = cos_sin_theta_p[0] * cos_sin_rho_p[1];
+				x = -cos_sin_theta_p[1] * cos_sin_rho_p[1]; // lgtm [cpp/integer-multiplication-cast-to-long]
+				y = cos_sin_theta_p[0] * cos_sin_rho_p[1];  // lgtm [cpp/integer-multiplication-cast-to-long]
 				z = cos_sin_rho_p[0];
 				sSphereMapTexCoordFast(rho, cos_sin_theta_p[0], cos_sin_theta_p[1], texCoordArr);
 				vertexArr << x*radius << y*radius << z*radius;
 
-				x = -cos_sin_theta_p[1] * cos_sin_rho_p[3];
-				y = cos_sin_theta_p[0] * cos_sin_rho_p[3];
+				x = -cos_sin_theta_p[1] * cos_sin_rho_p[3]; // lgtm [cpp/integer-multiplication-cast-to-long]
+				y = cos_sin_theta_p[0] * cos_sin_rho_p[3];  // lgtm [cpp/integer-multiplication-cast-to-long]
 				z = cos_sin_rho_p[2];
 				sSphereMapTexCoordFast(rho + drho, cos_sin_theta_p[0], cos_sin_theta_p[1], texCoordArr);
 				vertexArr << x*radius << y*radius << z*radius;
@@ -512,14 +512,14 @@ void StelPainter::sSphereMap(float radius, int slices, int stacks, float texture
 			texCoordArr.resize(0);
 			for (j=0,cos_sin_theta_p=cos_sin_theta;j<=slices;++j,cos_sin_theta_p+=2)
 			{
-				x = -cos_sin_theta_p[1] * cos_sin_rho_p[3];
-				y = cos_sin_theta_p[0] * cos_sin_rho_p[3];
+				x = -cos_sin_theta_p[1] * cos_sin_rho_p[3]; // lgtm [cpp/integer-multiplication-cast-to-long]
+				y = cos_sin_theta_p[0] * cos_sin_rho_p[3];  // lgtm [cpp/integer-multiplication-cast-to-long]
 				z = cos_sin_rho_p[2];
 				sSphereMapTexCoordFast(rho + drho, cos_sin_theta_p[0], -cos_sin_theta_p[1], texCoordArr);
 				vertexArr << x*radius << y*radius << z*radius;
 
-				x = -cos_sin_theta_p[1] * cos_sin_rho_p[1];
-				y = cos_sin_theta_p[0] * cos_sin_rho_p[1];
+				x = -cos_sin_theta_p[1] * cos_sin_rho_p[1]; // lgtm [cpp/integer-multiplication-cast-to-long]
+				y = cos_sin_theta_p[0] * cos_sin_rho_p[1];  // lgtm [cpp/integer-multiplication-cast-to-long]
 				z = cos_sin_rho_p[0];
 				sSphereMapTexCoordFast(rho, cos_sin_theta_p[0], -cos_sin_theta_p[1], texCoordArr);
 				vertexArr << x*radius << y*radius << z*radius;
@@ -625,7 +625,7 @@ struct StringTexture
 	~StringTexture() {delete texture;}
 };
 
-StringTexture* StelPainter::getTexTexture(const QString& str, int pixelSize)
+StringTexture* StelPainter::getTexTexture(const QString& str, int pixelSize) const
 {
 	// Render first the text into a QPixmap, then create a QOpenGLTexture
 	// from it.  We could optimize by directly using a QImage, but for some
@@ -1478,7 +1478,7 @@ public:
 	inline void operator()(const Vec3d* v0, const Vec3d* v1, const Vec3d* v2,
 						   const Vec2f* t0, const Vec2f* t1, const Vec2f* t2,
 						   const Vec3f* c0, const Vec3f* c1, const Vec3f* c2,
-						   unsigned int, unsigned int, unsigned)
+						   unsigned int, unsigned int, unsigned) const
 	{
 		// XXX: we may optimize more by putting the declaration and the test outside of this method.
 		const Vec3d tmpVertex[3] = {*v0, *v1, *v2};
@@ -1695,12 +1695,12 @@ void StelPainter::drawSprite2dMode(const Vec3d& v, float radius)
 void StelPainter::drawSprite2dMode(float x, float y, float radius, float rotation)
 {
 	static float vertexData[8];
-	static const float texCoordData[] = {0.,0., 1.,0., 0.,1., 1.,1.};
+	static const float texCoordData[] = {0.f,0.f, 1.f,0.f, 0.f,1.f, 1.f,1.f};
 
 	// compute the vertex coordinates applying the translation and the rotation
 	static const float vertexBase[] = {-1., -1., 1., -1., -1., 1., 1., 1.};
-	const float cosr = std::cos(rotation / 180 * M_PI);
-	const float sinr = std::sin(rotation / 180 * M_PI);
+	const float cosr = std::cos(rotation / 180.0 * M_PI);
+	const float sinr = std::sin(rotation / 180.0 * M_PI);
 	
 	// Takes into account device pixel density and global scale ratio, as we are drawing 2D stuff.
 	radius *= prj->getDevicePixelsPerPixel()*StelApp::getInstance().getGlobalScalingRatio();
@@ -1779,7 +1779,7 @@ void StelPainter::drawLine2d(const float x1, const float y1, const float x2, con
 // This used to draw a full sphere. Since 0.13 it's possible to have a spherical zone only.
 void StelPainter::sSphere(const float radius, const float oneMinusOblateness, const int slices, const int stacks, const int orientInside, const bool flipTexture, const float topAngle, const float bottomAngle)
 {
-	GLfloat x, y, z;
+	double x, y, z;
 	GLfloat s=0.f, t=0.f;
 	GLint i, j;
 	GLfloat nsign;
@@ -1828,19 +1828,20 @@ void StelPainter::sSphere(const float radius, const float oneMinusOblateness, co
 	colorArr.resize(0);
 	indiceArr.resize(0);
 
+	// LGTM comments: the floats are always <=1. We still prefer float multiplication (with insignificant accuracy loss) for speed.
 	for (i = 0,cos_sin_rho_p = cos_sin_rho; i < stacks; ++i,cos_sin_rho_p+=2)
 	{
 		s = !flipTexture ? 0.f : 1.f;
 		for (j = 0,cos_sin_theta_p = cos_sin_theta; j<=slices;++j,cos_sin_theta_p+=2)
 		{
-			x = -cos_sin_theta_p[1] * cos_sin_rho_p[1];
-			y = cos_sin_theta_p[0] * cos_sin_rho_p[1];
-			z = nsign * cos_sin_rho_p[0];
+			x = -cos_sin_theta_p[1] * cos_sin_rho_p[1]; // lgtm [cpp/integer-multiplication-cast-to-long]
+			y = cos_sin_theta_p[0] * cos_sin_rho_p[1];  // lgtm [cpp/integer-multiplication-cast-to-long]
+			z = nsign * cos_sin_rho_p[0];               // lgtm [cpp/integer-multiplication-cast-to-long]
 			texCoordArr << s << t;
 			vertexArr << x * radius << y * radius << z * oneMinusOblateness * radius;
-			x = -cos_sin_theta_p[1] * cos_sin_rho_p[3];
-			y = cos_sin_theta_p[0] * cos_sin_rho_p[3];
-			z = nsign * cos_sin_rho_p[2];
+			x = -cos_sin_theta_p[1] * cos_sin_rho_p[3]; // lgtm [cpp/integer-multiplication-cast-to-long]
+			y = cos_sin_theta_p[0] * cos_sin_rho_p[3];  // lgtm [cpp/integer-multiplication-cast-to-long]
+			z = nsign * cos_sin_rho_p[2];               // lgtm [cpp/integer-multiplication-cast-to-long]
 			texCoordArr << s << t - dt;
 			vertexArr << x * radius << y * radius << z * oneMinusOblateness * radius;
 			s += ds;
@@ -1863,7 +1864,7 @@ StelVertexArray StelPainter::computeSphereNoLight(float radius, float oneMinusOb
                           int orientInside, bool flipTexture, float topAngle, float bottomAngle)
 {
 	StelVertexArray result(StelVertexArray::Triangles);
-	GLfloat x, y, z;
+	double x, y, z;
 	GLfloat s=0.f, t=0.f;
 	GLint i, j;
 	GLfloat nsign;
@@ -1901,19 +1902,20 @@ StelVertexArray StelPainter::computeSphereNoLight(float radius, float oneMinusOb
 	const GLfloat dt = nsign / stacks; // from inside texture is reversed
 
 	// draw intermediate as quad strips
+	// LGTM comments: the floats are always <=1. We still prefer float multiplication (with insignificant accuracy loss) for speed.
 	for (i = 0,cos_sin_rho_p = cos_sin_rho; i < stacks; ++i,cos_sin_rho_p+=2)
 	{
 		s = !flipTexture ? 0.f : 1.f;
 		for (j = 0,cos_sin_theta_p = cos_sin_theta; j<=slices;++j,cos_sin_theta_p+=2)
 		{
-			x = -cos_sin_theta_p[1] * cos_sin_rho_p[1];
-			y = cos_sin_theta_p[0] * cos_sin_rho_p[1];
-			z = nsign * cos_sin_rho_p[0];
+			x = -cos_sin_theta_p[1] * cos_sin_rho_p[1]; // lgtm [cpp/integer-multiplication-cast-to-long]
+			y = cos_sin_theta_p[0] * cos_sin_rho_p[1];  // lgtm [cpp/integer-multiplication-cast-to-long]
+			z = nsign * cos_sin_rho_p[0];               // lgtm [cpp/integer-multiplication-cast-to-long]
 			result.texCoords << Vec2f(s,t);
 			result.vertex << Vec3d(x*radius, y*radius, z*oneMinusOblateness*radius);
-			x = -cos_sin_theta_p[1] * cos_sin_rho_p[3];
-			y = cos_sin_theta_p[0] * cos_sin_rho_p[3];
-			z = nsign * cos_sin_rho_p[2];
+			x = -cos_sin_theta_p[1] * cos_sin_rho_p[3]; // lgtm [cpp/integer-multiplication-cast-to-long]
+			y = cos_sin_theta_p[0] * cos_sin_rho_p[3];  // lgtm [cpp/integer-multiplication-cast-to-long]
+			z = nsign * cos_sin_rho_p[2];               // lgtm [cpp/integer-multiplication-cast-to-long]
 			result.texCoords << Vec2f(s, t-dt);
 			result.vertex << Vec3d(x*radius, y*radius, z*oneMinusOblateness*radius);
 			s += ds;
@@ -1940,7 +1942,7 @@ void StelPainter::sCylinder(float radius, float height, int slices, int orientIn
 	texCoordArray.clear();
 	vertexArray.clear();
 	float s = 0.f;
-	float x, y;
+	double x, y;
 	const float ds = 1.f / slices;
 	const float da = 2.f * M_PI / slices;
 	for (int i = 0; i <= slices; ++i)
@@ -2088,12 +2090,16 @@ void StelPainter::initGLShaders()
 	QOpenGLShader fshader4(QOpenGLShader::Fragment);
 	const auto fsrc4 =
 		makeDitheringShader()+
+		makeSaturationShader()+
 		"varying mediump vec2 texc;\n"
 		"varying mediump vec4 outColor;\n"
 		"uniform sampler2D tex;\n"
+		"uniform lowp float saturation;\n"
 		"void main(void)\n"
 		"{\n"
 		"    gl_FragColor = dither(texture2D(tex, texc)*outColor);\n"
+		"    if (saturation != 1.0)\n"
+		"        gl_FragColor.rgb = saturate(gl_FragColor.rgb, saturation);\n"
 		"}\n";
 	fshader4.compileSourceCode(fsrc4);
 	if (!fshader4.log().isEmpty()) { qWarning() << "StelPainter: Warnings while compiling fshader4: " << fshader4.log(); }
@@ -2109,6 +2115,7 @@ void StelPainter::initGLShaders()
 	texturesColorShaderVars.texture = texturesColorShaderProgram->uniformLocation("tex");
 	texturesColorShaderVars.bayerPattern = texturesColorShaderProgram->uniformLocation("bayerPattern");
 	texturesColorShaderVars.rgbMaxValue = texturesColorShaderProgram->uniformLocation("rgbMaxValue");
+	texturesColorShaderVars.saturation = texturesColorShaderProgram->uniformLocation("saturation");
 }
 
 
@@ -2215,6 +2222,7 @@ void StelPainter::drawFromArray(DrawingMode mode, int count, int offset, bool do
 		glBindTexture(GL_TEXTURE_2D, bayerPatternTex);
 		pr->setUniformValue(texturesColorShaderVars.bayerPattern, 1);
 		pr->setUniformValue(texturesColorShaderVars.rgbMaxValue, rgbMaxValue[0], rgbMaxValue[1], rgbMaxValue[2]);
+		pr->setUniformValue(texturesColorShaderVars.saturation, saturation);
 	}
 	else if (!texCoordArray.enabled && colorArray.enabled && !normalArray.enabled)
 	{

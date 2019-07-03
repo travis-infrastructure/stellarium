@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _TOASTMGR_HPP_
-#define _TOASTMGR_HPP_
+#ifndef TOASTMGR_HPP
+#define TOASTMGR_HPP
 
 #include "StelModule.hpp"
 
@@ -26,8 +26,8 @@ class ToastMgr : public StelModule
 {
 	Q_OBJECT
 	Q_PROPERTY(bool surveyDisplayed
-			READ getFlagSurveyShow
-			WRITE setFlagSurveyShow
+			READ getFlagShow
+			WRITE setFlagShow
 			NOTIFY surveyDisplayedChanged)
 public:
 	ToastMgr();
@@ -40,7 +40,11 @@ public:
 	virtual double getCallOrder(StelModuleActionName actionName) const Q_DECL_OVERRIDE;
 
 public slots:
+	void setFlagShow(bool displayed);
+	bool getFlagShow(void) const;
+	//! @deprecated Will be removed in version 0.20. Use setFlagShow() instead.
 	void setFlagSurveyShow(bool displayed);
+	//! @deprecated Will be removed in version 0.20. Use getFlagShow() instead.
 	bool getFlagSurveyShow(void) const;
 
 signals:
@@ -51,4 +55,4 @@ private:
 	class LinearFader* fader;
 };
 
-#endif // _TOASTMGR_HPP_
+#endif // TOASTMGR_HPP

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA  02110-1335, USA.
  */
 
-#ifndef _STELOBJECT_HPP_
-#define _STELOBJECT_HPP_
+#ifndef STELOBJECT_HPP
+#define STELOBJECT_HPP
 
 #include "VecMath.hpp"
 #include "StelObjectType.hpp"
@@ -71,8 +71,6 @@ public:
 // TODO GZ
 //		RaDecJ2000Planetocentric  = 0x00020000, //!< The planetocentric equatorial position (J2000 ref) [Mostly to compare with almanacs]
 //		RaDecOfDatePlanetocentric = 0x00040000  //!< The planetocentric equatorial position (of date)
-
-
 	};
 	Q_DECLARE_FLAGS(InfoStringGroup, InfoStringGroupFlags)
 
@@ -111,10 +109,16 @@ public:
 	//! - azimuth : apparent azimuth angle in decimal degrees
 	//! - altitude-geometric : geometric altitude angle in decimal degrees
 	//! - azimuth-geometric : geometric azimuth angle in decimal degrees
+	//! - airmass : number of airmasses the object's light had to pass through the atmosphere. For negative altitudes this number may be meaningless.
 	//! - ra : right ascension angle (current date frame) in decimal degrees
 	//! - dec : declination angle (current date frame) in decimal degrees
 	//! - raJ2000 : right ascension angle (J2000 frame) in decimal degrees
 	//! - decJ2000 : declination angle (J2000 frame) in decimal degrees
+	//! - parallacticAngle : parallactic angle in decimal degrees (for non-star objects only)
+	//! - hourAngle-dd : hour angle in decimal degrees
+	//! - hourAngle-hms : hour angle in HMS format (formatted string)
+	//! - meanSidTm : mean sidereal time, in decimal degrees (on Earth only!)
+	//! - appSidTm : mean sidereal time, in decimal degrees (on Earth only!)
 	//! - glong : galactic longitude in decimal degrees
 	//! - glat : galactic latitude in decimal degrees
 	//! - sglong : supergalactic longitude in decimal degrees
@@ -137,6 +141,7 @@ public:
 	//! - set-dhr : time of set in decimal hours
 	//! - name : english name of the object
 	//! - localized-name : localized name	
+	//! @note Coordinate values may need modulo operation to bring them into ranges [0..360].
 	virtual QVariantMap getInfoMap(const StelCore *core) const;
 
 	//! Return object's type. It should be the name of the class.
@@ -205,6 +210,9 @@ public:
 	//! The frame has its Z axis at the zenith
 	Vec3d getAltAzPosAuto(const StelCore* core) const;
 
+	//! Get parallactic angle, which is the deviation between zenith angle and north angle. [radians]
+	float getParallacticAngle(const StelCore* core) const;
+
 	//! Checking position an object above mathematical horizon for current location.
 	//! @return true if object an above mathematical horizon
 	bool isAboveHorizon(const StelCore* core) const;
@@ -245,9 +253,15 @@ public:
 	virtual double getAngularSize(const StelCore* core) const = 0;
 
 protected:
-
-	//! Format the positional info string contain J2000/of date/altaz/hour angle positions and constellation, sidereal time, etc. for the object
+	//! Format the positional info string containing J2000/of date/altaz/hour angle positions and constellation, sidereal time, etc. for the object
 	QString getCommonInfoString(const StelCore *core, const InfoStringGroup& flags) const;
+
+	//! Format the magnitude info string for the object
+	//! @param core
+	//! @param flags
+	//! @param alt_app apparent altitude (for atmosphere-dependent calculations)
+	//! @param decimals significant digits after the comma.
+	virtual QString getMagnitudeInfoString(const StelCore *core, const InfoStringGroup& flags, const double alt_app, const int decimals=1) const;
 
 	//! Apply post processing on the info string
 	void postProcessInfoString(QString& str, const InfoStringGroup& flags) const;
@@ -262,4 +276,4 @@ private:
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(StelObject::InfoStringGroup)
 
-#endif // _STELOBJECT_HPP_
+#endif // STELOBJECT_HPP
